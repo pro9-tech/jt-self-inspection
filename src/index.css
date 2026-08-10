@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+:root {
+  /* ── 색 씨앗 ── */
+  --seed-color-primary: #1F2328;   /* 회사 대표색 = 로고색 = Neutral Charcoal */
+  --seed-color-neutral: #1F2328;   /* 뉴트럴 스케일의 기준 */
+  --seed-color-accent:  #305CDE;   /* 상호작용 강조 = blue-500 */
+  --seed-color-success:  #14A870;  /* 성공·승인·정상 = green-500 */
+  --seed-color-warning:  #F0B01C;  /* 주의·경고 = yellow-500 */
+  --seed-color-error:    #E14B4B;  /* 오류·반려·규격초과 = red-500 */
+  --seed-color-info:     #305CDE;  /* 정보·안내 */
+
+  /* ── 크기 씨앗 ── */
+  --seed-font-size: 14px;   /* 본문 기준 */
+  --seed-radius:    8px;    /* 기준 모서리 */
+  --seed-unit:      4px;    /* 간격 그리드 기본 단위 */
+
+  /* ── 폰트 씨앗 ── */
+  --seed-font-base: "Pretendard Variable", Pretendard, "Figtree", "Noto Sans SC", "Noto Sans TC", -apple-system, BlinkMacSystemFont, sans-serif;
+  --seed-font-num: "Figtree", "Pretendard Variable", sans-serif;
+
+  /* ── 3-A. 색 팔레트 (6단 파생) ── */
+  --color-primary-bg:     #EEF0F2;  /* = neutral-100 */
+  --color-primary-border:  #DEE2E6;  /* = neutral-200 */
+  --color-primary-hover:   #2E343B;  /* = neutral-800 */
+  --color-primary:         #1F2328;  /* = neutral-900 = 로고색 */
+  --color-primary-active:  #14171A;  /* = neutral-950 */
+  --color-primary-text:    #1F2328;  /* = neutral-900 */
+
+  --color-accent-bg:     #EEF3FE;  /* = blue-50 */
+  --color-accent-border:  #D6E1FC;  /* = blue-100 */
+  --color-accent-hover:   #5578E8;  /* = blue-400 */
+  --color-accent:         #305CDE;  /* = blue-500 = 링크·포커스 */
+  --color-accent-active:  #2A4EC0;  /* = blue-600 */
+  --color-accent-text:    #24419E;  /* = blue-700 */
+
+  --color-success-bg:     #E8F7F1;
+  --color-success-border: #C2ECD9;
+  --color-success-hover:  #34C18A;
+  --color-success:        #14A870;
+  --color-success-active: #0E8054;
+  --color-success-text:   #09593A;
+
+  --color-warning-bg:     #FEF7E8;
+  --color-warning-border: #FCE6B8;
+  --color-warning-hover:  #F7C24D;
+  --color-warning:        #F0B01C;
+  --color-warning-active: #CC920F;
+  --color-warning-text:   #8F6305;
+
+  --color-error-bg:       #FDEAEA;
+  --color-error-border:   #FBC5C5;
+  --color-error-hover:    #E96F6F;
+  --color-error:          #E14B4B;
+  --color-error-active:   #C03636;
+  --color-error-text:     #8B2020;
+
+  --color-info-bg:        #EEF3FE;
+  --color-info-border:    #D6E1FC;
+  --color-info-hover:     #5578E8;
+  --color-info:           #305CDE;
+  --color-info-active:    #2A4EC0;
+  --color-info-text:      #24419E;
+
+  /* ── 3-B. 중립(Neutral) 계단 ── */
+  --neutral-0:  #FFFFFF;  /* 흰색 — 카드·표면 배경의 기준 */
+  --neutral-50: #F7F8F9;
+  --neutral-100:#EEF0F2;
+  --neutral-200:#DEE2E6;
+  --neutral-300:#C5CBD1;
+  --neutral-400:#9DA5AF;
+  --neutral-500:#757F8A;
+  --neutral-600:#5A6470;
+  --neutral-700:#434B55;
+  --neutral-800:#2E343B;
+  --neutral-900:#1F2328;  /* 로고색 = primary */
+  --neutral-950:#14171A;
+
+  /* ── 3-C. 타입 스케일 ── */
+  --fs-2xs:10px; --fs-xs:11px; --fs-sm:12px; --fs-base:14px;
+  --fs-lg:16px;  --fs-xl:18px; --fs-2xl:22px; --fs-3xl:26px; --fs-4xl:30px;
+  --lh-tight:1.35; --lh-snug:1.45; --lh-normal:1.6; --lh-relaxed:1.75;
+
+  /* ── 3-D. 간격 스케일 ── */
+  --space-1:4px;  --space-2:8px;  --space-3:12px; --space-4:16px;
+  --space-5:20px; --space-6:24px; --space-7:32px; --space-8:40px;
+  --space-9:48px; --space-10:56px; --space-11:64px; --space-12:72px;
+
+  /* ── 3-E. 라운드 스케일 ── */
+  --r-sm:4px; --r-md:8px; --r-lg:16px; --r-xl:24px; --r-full:9999px;
+
+  --shadow-xs:0 4px 12px rgba(18,21,26,.08);
+  --shadow-sm:0 4px 16px rgba(18,21,26,.06);
+  --shadow-lg:0 20px 40px rgba(18,21,26,.15);
+
+  --dur-fast:.2s; --dur-base:.5s; --ease-standard:cubic-bezier(.4,0,.2,1);
+
+  /* ── 4. Alias Token ── */
+  --color-text:            var(--neutral-900);  /* 본문 */
+  --color-text-secondary:  var(--neutral-500);  /* 보조 설명 */
+  --color-text-tertiary:   var(--neutral-400);  /* 힌트·placeholder */
+  --color-text-disabled:   var(--neutral-300);
+
+  --color-bg-layout:     var(--neutral-50);   /* 페이지 바탕 */
+  --color-bg-container:  var(--neutral-0);    /* 카드·패널·표 (=흰색) */
+  --color-bg-elevated:   var(--neutral-0);    /* 모달·드롭다운 */
+
+  --color-border:        var(--neutral-200);
+  --color-split:         var(--neutral-100);  /* 표 행 구분선 */
+
+  --color-link:          var(--color-accent);
+  --color-link-hover:    var(--color-accent-hover);
+  --color-focus-ring:    var(--color-accent);
+
+  /* 컨트롤 기본 높이 */
+  --control-height:      36px;
+  --control-height-sm:   28px;
+  --control-height-lg:   44px;
+}
+
+[data-theme="dark"] {
+  --color-text:           rgba(255,255,255,.88);
+  --color-text-secondary: rgba(255,255,255,.55);
+  --color-text-tertiary:  rgba(255,255,255,.38);
+  --color-bg-layout:      #0F172A;   /* slate-900 */
+  --color-bg-container:   #1E293B;   /* slate-800 */
+  --color-bg-elevated:    #273449;
+  --color-border:         rgba(255,255,255,.14);
+  --color-split:          rgba(255,255,255,.08);
+
+  --color-primary:        var(--neutral-50);
+  --color-primary-text:   var(--neutral-900);
+
+  --color-accent:         #7E9DF1;   /* blue-300 */
+  --color-link:           #7E9DF1;
+  --color-focus-ring:     #7E9DF1;
+}
+
+body {
+  font-family: var(--seed-font-base);
+  background-color: var(--color-bg-layout);
+  color: var(--color-text);
+  font-size: var(--fs-base);
+  line-height: var(--lh-normal);
+  transition: background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}

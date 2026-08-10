@@ -1,0 +1,5 @@
+{
+  "name": "충진품 계측 기록",
+  "description": "화장품 제조 공정 충진량 계측 및 일탈 기록 관리 시스템",
+  "requestFramePermissions": []
+}

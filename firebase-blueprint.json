@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "FillingRecord": {
+      "title": "FillingRecord",
+      "description": "A record of filling product measurements for a specific lot.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the record." },
+        "mainMode": { "type": "string", "enum": ["충진", "포장"] },
+        "subMode": { "type": "string", "enum": ["충진1", "충진2"] },
+        "itemName": { "type": "string", "description": "Name of the product being filled." },
+        "lotNumber": { "type": "string", "description": "Lot number of the production batch." },
+        "fillingDate": { "type": "string", "format": "date", "description": "Date of the filling process." },
+        "standardWeight": { "type": "number", "nullable": true, "description": "Target weight for each vial in grams." },
+        "underweightTolerance": { "type": "number", "nullable": true, "description": "Allowed underweight deviation in grams." },
+        "overweightTolerance": { "type": "number", "nullable": true, "description": "Allowed overweight deviation in grams." },
+        "operator": { "type": "string", "description": "Name of the person performing the measurements." },
+        "verifier": { "type": "string", "description": "Name of the person verifying the measurements." },
+        "measurements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "time": { "type": "string" },
+              "vials": { "type": "array", "items": { "type": "number", "nullable": true } },
+              "capStatus": { "type": "array", "items": { "type": "string", "nullable": true } },
+              "stickerStatus": { "type": "array", "items": { "type": "string", "nullable": true } },
+              "printingStatus": { "type": "array", "items": { "type": "string", "nullable": true } },
+              "scratchStatus": { "type": "array", "items": { "type": "string", "nullable": true } },
+              "foreignStatus": { "type": "array", "items": { "type": "string", "nullable": true } },
+              "memo": { "type": "string" }
+            }
+          },
+          "description": "List of hourly measurement sets."
+        },
+        "createdAt": { "type": "number", "description": "Timestamp when the record was created." },
+        "uid": { "type": "string", "description": "The UID of the user who owns this record." }
+      },
+      "required": ["id", "mainMode", "subMode", "itemName", "lotNumber", "fillingDate", "operator", "measurements", "createdAt", "uid"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Pre-registered configuration values for quick selection.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "standardWeight": { "type": "number", "nullable": true },
+              "underweightTolerance": { "type": "number", "nullable": true },
+              "overweightTolerance": { "type": "number", "nullable": true }
+            }
+          }
+        },
+        "operators": { "type": "array", "items": { "type": "string" } },
+        "verifiers": { "type": "array", "items": { "type": "string" } },
+        "fillingScriptUrl": { "type": "string" },
+        "packagingScriptUrl": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["uid"]
+    }
+  },
+  "firestore": {
+    "records": {
+      "schema": "FillingRecord",
+      "description": "Collection of filling measurement records."
+    },
+    "settings": {
+      "schema": "AppSettings",
+      "description": "User-specific application settings."
+    }
+  }
+}
