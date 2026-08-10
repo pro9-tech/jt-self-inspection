@@ -240,6 +240,433 @@ const DEFAULT_MEASUREMENTS: Measurement[] = TIMES.map(time => ({
 
 // --- Components ---
 
+// 중량 계측값 트렌드 그래프 컴포넌트
+const WeightChart = ({ 
+  measurements, 
+  standardWeight, 
+  underweightTolerance, 
+  overweightTolerance 
+}: { 
+  measurements: Measurement[]; 
+  standardWeight: number | null; 
+  underweightTolerance: number | null; 
+  overweightTolerance: number | null; 
+}) => {
+  // 전체 평균값 계산
+  const validWeights = measurements.flatMap(m => m.vials.filter((v): v is number => v !== null));
+  const average = validWeights.length > 0 
+    ? (validWeights.reduce((a, b) => a + b, 0) / validWeights.length).toFixed(2)
+    : '0.00';
+
+  // SVG 그래프 캔버스 사양 설정
+  const width = 500;
+  const height = 200;
+  const padding = 30;
+
+  const chartWidth = width - padding * 2;
+  const chartHeight = height - padding * 2;
+
+  const validMeasurements = measurements.filter(m => m.vials.some(v => v !== null));
+
+  // Y축 스케일 범위 계산
+  const std = standardWeight || 0;
+  const minTolerance = underweightTolerance || 0;
+  const maxTolerance = overweightTolerance || 0;
+  
+  const minVal = std - minTolerance * 1.5 || 0;
+  const maxVal = std + maxTolerance * 1.5 || 10;
+  const yRange = maxVal - minVal || 1;
+
+  const getX = (index: number) => padding + (index / (measurements.length - 1 || 1)) * chartWidth;
+  const getY = (val: number) => height - padding - ((val - minVal) / yRange) * chartHeight;
+
+  return (
+    <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm flex flex-col h-full select-none">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 측정 트렌드 및 평균</h3>
+          <p className="text-lg font-bold text-zinc-800 mt-1">종합 평균: <span className="text-blue-600 font-extrabold">{average} g</span></p>
+        </div>
+      </div>
+      
+      <div className="flex-1 min-h-[140px] relative">
+        {validMeasurements.length === 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400 italic">
+            측정된 중량 데이터가 존재하지 않습니다.
+          </div>
+        ) : (
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
+            {/* 오차 한계 기준선 렌더링 */}
+            {standardWeight && (
+              <>
+                {/* 상한값 선 */}
+                <line 
+                  x1={padding} 
+                  y1={getY(std + maxTolerance)} 
+                  x2={width - padding} 
+                  y2={getY(std + maxTolerance)} 
+                  stroke="var(--color-error)" 
+                  strokeWidth="1" 
+                  strokeDasharray="4 4" 
+                />
+                <text x={width - padding + 5} y={getY(std + maxTolerance) + 3} fontSize="7" fill="var(--color-error)">
+                  +{maxTolerance}g
+                </text>
+                {/* 정석 중량선 */}
+                <line 
+                  x1={padding} 
+                  y1={getY(std)} 
+                  x2={width - padding} 
+                  y2={getY(std)} 
+                  stroke="var(--color-success)" 
+                  strokeWidth="1.5" 
+                />
+                <text x={width - padding + 5} y={getY(std) + 3} fontSize="7" fill="var(--color-success)">
+                  {std}g
+                </text>
+                {/* 하한값 선 */}
+                <line 
+                  x1={padding} 
+                  y1={getY(std - minTolerance)} 
+                  x2={width - padding} 
+                  y2={getY(std - minTolerance)} 
+                  stroke="var(--color-error)" 
+                  strokeWidth="1" 
+                  strokeDasharray="4 4" 
+                />
+                <text x={width - padding + 5} y={getY(std - minTolerance) + 3} fontSize="7" fill="var(--color-error)">
+                  -{minTolerance}g
+                </text>
+              </>
+            )}
+
+            {/* X축 시간 라벨 */}
+            {measurements.map((m, idx) => (
+              <text 
+                key={m.id} 
+                x={getX(idx)} 
+                y={height - 8} 
+                fontSize="8" 
+                fill="#9DA5AF" 
+                textAnchor="middle"
+              >
+                {m.time}
+              </text>
+            ))}
+
+            {/* 중량 데이터 꺾은선 그리기 */}
+            {(() => {
+              const points = measurements.map((m, idx) => {
+                const vals = m.vials.filter((v): v is number => v !== null);
+                if (vals.length === 0) return null;
+                const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                return { x: getX(idx), y: getY(avg) };
+              });
+
+              const pathD = points
+                .map((p, idx) => (p ? `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}` : ''))
+                .filter(Boolean)
+                .join(' ');
+
+              return (
+                <>
+                  {pathD && (
+                    <path 
+                      d={pathD} 
+                      fill="none" 
+                      stroke="var(--color-accent)" 
+                      strokeWidth="2.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                  )}
+                  {points.map((p, idx) => p && (
+                    <circle 
+                      key={idx} 
+                      cx={p.x} 
+                      cy={p.y} 
+                      r="4" 
+                      fill="var(--color-accent)" 
+                      stroke="#ffffff" 
+                      strokeWidth="1.5" 
+                    />
+                  ))}
+                </>
+              );
+            })()}
+          </svg>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// A4 출력 전용 레포트 템플릿 컴포넌트
+const PrintReportTemplate = ({ record }: { record: FillingRecord }) => {
+  const year = record.fillingDate ? record.fillingDate.split('-')[0] : new Date().getFullYear();
+  const classificationTitle = record.mainMode === '포장' ? '포장품 자주검사기록' : '충진품 자주검사기록';
+  const reportTitle = `${year}년 ${classificationTitle}`;
+
+  // A4 한 장당 들어갈 최대 데이터 개수 (10개씩 분할)
+  const ROWS_PER_PAGE = 10;
+  const totalMeasurements = record.measurements;
+  
+  const pages: Measurement[][] = [];
+  for (let i = 0; i < totalMeasurements.length; i += ROWS_PER_PAGE) {
+    pages.push(totalMeasurements.slice(i, i + ROWS_PER_PAGE));
+  }
+
+  if (pages.length === 0) {
+    pages.push([]);
+  }
+
+  // 중량 판정 헬퍼 함수
+  const getWeightResult = (vials: (number | null)[], std: number, under: number, over: number): string => {
+    let count = 0;
+    let failCount = 0;
+    vials.forEach(v => {
+      if (v !== null && v !== undefined && String(v) !== "") {
+        count++;
+        const val = Number(v);
+        if (val < (std - under) || val > (std + over)) failCount++;
+      }
+    });
+    if (count === 0) return "-";
+    return failCount < 2 ? "적합" : "부적합";
+  };
+
+  // 일반 상태 판정 헬퍼 함수
+  const getStatusResult = (arr: (string | null)[]): string => {
+    let count = 0;
+    let failCount = 0;
+    arr.forEach(v => {
+      if (v !== null && v !== undefined && v !== "") {
+        count++;
+        if (v === "불량") failCount++;
+      }
+    });
+    if (count === 0) return "-";
+    return failCount < 2 ? "적합" : "부적합";
+  };
+
+  return (
+    <div className="print-only w-[210mm] mx-auto text-black p-4">
+      {pages.map((pageMeasurements, pageIdx) => (
+        <div key={pageIdx} className="page-break flex flex-col min-h-[297mm] justify-between pb-8" style={{ boxSizing: 'border-box' }}>
+          <div>
+            {/* 상단 결재란 및 타이틀 */}
+            <div className="flex justify-between items-start mb-6">
+              {/* 결재란 (왼쪽 상단 배치) */}
+              <table className="border-collapse border border-black text-xs text-center w-[180px]">
+                <tbody>
+                  <tr>
+                    <td rowSpan={3} className="border border-black font-bold px-2 py-4 w-[30px] bg-zinc-50">결재</td>
+                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">작성</td>
+                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">검토</td>
+                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">승인</td>
+                  </tr>
+                  <tr className="h-[45px]">
+                    <td className="border border-black py-1 text-[10px] text-zinc-400">
+                      {record.verifier ? (
+                        <div className="flex flex-col items-center">
+                          <span>{record.verifier}</span>
+                          <span className="text-[8px]">(서명)</span>
+                        </div>
+                      ) : ''}
+                    </td>
+                    <td className="border border-black py-1"></td>
+                    <td className="border border-black py-1">
+                      {record.operator ? (
+                        <div className="flex flex-col items-center">
+                          <span>{record.operator}</span>
+                          <span className="text-[8px]">(서명)</span>
+                        </div>
+                      ) : ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-black py-0.5 text-[8px]">/</td>
+                    <td className="border border-black py-0.5 text-[8px]">/</td>
+                    <td className="border border-black py-0.5 text-[8px]">/</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* 제목 (오른쪽 배치 및 연도 동적 표시) */}
+              <div className="text-right flex-1 pl-4 self-center">
+                <h1 className="text-2xl font-extrabold tracking-tight border-b-2 border-black pb-2 inline-block">
+                  {reportTitle}
+                </h1>
+                <div className="text-xs text-zinc-600 mt-1 font-mono">
+                  인쇄일자: {format(new Date(), 'yyyy-MM-dd HH:mm')} | 페이지: {pageIdx + 1} / {pages.length}
+                </div>
+              </div>
+            </div>
+
+            {/* 기본 품목 정보 표 */}
+            <table className="w-full border-collapse border border-black text-xs text-center mb-4">
+              <tbody>
+                <tr className="bg-zinc-50">
+                  <td className="border border-black font-bold py-2 w-[15%]">품목명 (Lot No.)</td>
+                  <td className="border border-black py-2 w-[35%] font-medium">
+                    {record.itemName || '-'} <span className="text-zinc-500">({record.lotNumber || 'Lot 번호 없음'})</span>
+                  </td>
+                  <td className="border border-black font-bold py-2 w-[15%]">충진량 / 충진일</td>
+                  <td className="border border-black py-2 w-[35%] font-medium">
+                    {record.standardWeight ? `${record.standardWeight}g (±${record.underweightTolerance}g)` : '-'} / {record.fillingDate || '-'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* 계측 데이터 테이블 */}
+            <table className="w-full border-collapse border border-black text-xs text-center">
+              <thead>
+                <tr className="bg-zinc-100 text-[10px] font-bold">
+                  <td rowSpan={2} className="border border-black py-2 w-[60px]">No</td>
+                  <td rowSpan={2} className="border border-black py-2 w-[80px]">검사항목</td>
+                  <td colSpan={3} className="border border-black py-1">계측기록 (시료 1, 2, 3)</td>
+                  <td rowSpan={2} className="border border-black py-2 w-[70px]">판정</td>
+                  <td rowSpan={2} className="border border-black py-2">비고 (메모)</td>
+                </tr>
+                <tr className="bg-zinc-50 text-[9px]">
+                  <td className="border border-black py-1 w-[80px]">1회</td>
+                  <td className="border border-black py-1 w-[80px]">2회</td>
+                  <td className="border border-black py-1 w-[80px]">3회</td>
+                </tr>
+              </thead>
+              <tbody>
+                {pageMeasurements.map((m, idx) => {
+                  const globalIdx = pageIdx * ROWS_PER_PAGE + idx + 1;
+                  
+                  // 충진1 (중량 + 캡)
+                  if (record.mainMode === '충진' && record.subMode === '충진1') {
+                    const hasWeight = m.vials.some(v => v !== null);
+                    const caps = m.capStatus;
+                    const weightRes = getWeightResult(m.vials, record.standardWeight || 0, record.underweightTolerance || 0, record.overweightTolerance || 0);
+                    const capRes = getStatusResult(caps);
+
+                    return (
+                      <React.Fragment key={m.id}>
+                        <tr className="h-[28px]">
+                          <td rowSpan={2} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
+                          <td className="border border-black font-bold bg-zinc-50/30">중량 (g)</td>
+                          <td className="border border-black font-mono">{m.vials[0] !== null ? `${m.vials[0]} g` : '-'}</td>
+                          <td className="border border-black font-mono">{m.vials[1] !== null ? `${m.vials[1]} g` : '-'}</td>
+                          <td className="border border-black font-mono">{m.vials[2] !== null ? `${m.vials[2]} g` : '-'}</td>
+                          <td className={`border border-black font-bold ${weightRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                            {hasWeight ? weightRes : '-'}
+                          </td>
+                          <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
+                            {m.vialMemo || ''}
+                          </td>
+                        </tr>
+                        <tr className="h-[28px]">
+                          <td className="border border-black font-bold bg-zinc-50/30">캡 상태</td>
+                          <td className={`border border-black font-bold ${caps[0] === '불량' ? 'text-red-500' : ''}`}>{caps[0] || '-'}</td>
+                          <td className={`border border-black font-bold ${caps[1] === '불량' ? 'text-red-500' : ''}`}>{caps[1] || '-'}</td>
+                          <td className={`border border-black font-bold ${caps[2] === '불량' ? 'text-red-500' : ''}`}>{caps[2] || '-'}</td>
+                          <td className={`border border-black font-bold ${capRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                            {caps.some(c => c !== null) ? capRes : '-'}
+                          </td>
+                          <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
+                            {m.capMemo || ''}
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  } 
+                  
+                  // 충진2 (스티커 + 날인)
+                  else if (record.mainMode === '충진' && record.subMode === '충진2') {
+                    const stickers = m.stickerStatus;
+                    const prints = m.printingStatus;
+                    const stickerRes = getStatusResult(stickers);
+                    const printRes = getStatusResult(prints);
+
+                    return (
+                      <React.Fragment key={m.id}>
+                        <tr className="h-[28px]">
+                          <td rowSpan={2} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
+                          <td className="border border-black font-bold bg-zinc-50/30">스티커</td>
+                          <td className={`border border-black font-bold ${stickers[0] === '불량' ? 'text-red-500' : ''}`}>{stickers[0] || '-'}</td>
+                          <td className={`border border-black font-bold ${stickers[1] === '불량' ? 'text-red-500' : ''}`}>{stickers[1] || '-'}</td>
+                          <td className={`border border-black font-bold ${stickers[2] === '불량' ? 'text-red-500' : ''}`}>{stickers[2] || '-'}</td>
+                          <td className={`border border-black font-bold ${stickerRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                            {stickers.some(c => c !== null) ? stickerRes : '-'}
+                          </td>
+                          <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
+                            {m.stickerMemo || ''}
+                          </td>
+                        </tr>
+                        <tr className="h-[28px]">
+                          <td className="border border-black font-bold bg-zinc-50/30">날인</td>
+                          <td className={`border border-black font-bold ${prints[0] === '불량' ? 'text-red-500' : ''}`}>{prints[0] || '-'}</td>
+                          <td className={`border border-black font-bold ${prints[1] === '불량' ? 'text-red-500' : ''}`}>{prints[1] || '-'}</td>
+                          <td className={`border border-black font-bold ${prints[2] === '불량' ? 'text-red-500' : ''}`}>{prints[2] || '-'}</td>
+                          <td className={`border border-black font-bold ${printRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                            {prints.some(c => c !== null) ? printRes : '-'}
+                          </td>
+                          <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
+                            {m.printingMemo || ''}
+                          </td>
+                        </tr>
+                      </React.Fragment>
+                    );
+                  } 
+                  
+                  // 포장 (날인 + 캡 + 스티커 + 스크래치 + 이물)
+                  else {
+                    const labels = ["날인", "캡", "스티커", "스크래치", "이물"];
+                    const statusArrays = [m.printingStatus, m.capStatus, m.stickerStatus, m.scratchStatus, m.foreignStatus];
+                    const memoFields: ("printingMemo" | "capMemo" | "stickerMemo" | "scratchMemo" | "foreignMemo")[] = [
+                      "printingMemo", "capMemo", "stickerMemo", "scratchMemo", "foreignMemo"
+                    ];
+
+                    return (
+                      <React.Fragment key={m.id}>
+                        {labels.map((label, labelIdx) => {
+                          const arr = statusArrays[labelIdx];
+                          const resStatus = getStatusResult(arr);
+                          const isFirst = labelIdx === 0;
+                          
+                          return (
+                            <tr key={label} className="h-[24px]">
+                              {isFirst && (
+                                <td rowSpan={5} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
+                              )}
+                              <td className="border border-black font-bold bg-zinc-50/30">{label}</td>
+                              <td className={`border border-black font-bold ${arr[0] === '불량' ? 'text-red-500' : ''}`}>{arr[0] || '-'}</td>
+                              <td className={`border border-black font-bold ${arr[1] === '불량' ? 'text-red-500' : ''}`}>{arr[1] || '-'}</td>
+                              <td className={`border border-black font-bold ${arr[2] === '불량' ? 'text-red-500' : ''}`}>{arr[2] || '-'}</td>
+                              <td className={`border border-black font-bold ${resStatus === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                                {arr.some(c => c !== null) ? resStatus : '-'}
+                              </td>
+                              <td className="border border-black text-left px-2 max-w-[200px] truncate text-[9px]">
+                                {m[memoFields[labelIdx]] || ''}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  }
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 하단 푸터 (오른쪽 하단에 문서번호 지정) */}
+          <div className="flex justify-between items-center text-xs font-medium border-t border-black pt-2 mt-4 font-mono">
+            <span>(주)제니트리</span>
+            <span className="font-extrabold">[JTQF-3440-05] (Rev.0)</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 interface NumberInputProps {
   value: number | null;
   onChange: (value: number | null) => void;
@@ -1080,6 +1507,8 @@ function AppContent() {
     });
   };
 
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+
   // 대시보드(홈) 화면으로 돌아가는 핸들러 함수
   const handleGoDashboard = () => {
     setShowHistory(false);
@@ -1095,39 +1524,35 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-layout)] text-[var(--color-text)] font-sans p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-8 print-hidden">
-        
-        {/* Header Section (상단 헤더 영역) */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[var(--color-border)] pb-6">
-          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-            {/* 로고 영역: 클릭 시 대시보드로 이동, 다크모드에 따라 로고색이 자동 교체됨 */}
-            <div className="flex items-center cursor-pointer select-none" onClick={handleGoDashboard} title="대시보드로 이동">
-              <img 
-                src="/brand/logo/logo-h.svg" 
-                alt="Zenitry Logo" 
-                className="h-[26px] w-auto object-contain block dark:hidden" 
-              />
-              <img 
-                src="/brand/logo/logo-h-light.svg" 
-                alt="Zenitry Logo" 
-                className="h-[26px] w-auto object-contain hidden dark:block" 
-              />
-            </div>
-            
-            <div className="border-l border-[var(--color-border)] pl-4 hidden md:block h-6"></div>
+    <div className="min-h-screen flex bg-[var(--color-bg-layout)] text-[var(--color-text)] font-sans">
+      
+      {/* ── 1. 왼쪽 세로형 사이드바 (인쇄 시 숨김) ── */}
+      <aside className="w-64 bg-white border-r border-[var(--color-border)] p-6 flex flex-col gap-6 shrink-0 print-hidden justify-between">
+        <div className="space-y-6">
+          {/* 로고 영역 (현 위치 유지) */}
+          <div className="flex items-center cursor-pointer select-none pb-4 border-b border-[var(--color-border)]" onClick={handleGoDashboard} title="대시보드로 이동">
+            <img 
+              src="/brand/logo/logo-h.svg" 
+              alt="Zenitry Logo" 
+              className="h-[26px] w-auto object-contain block dark:hidden" 
+            />
+            <img 
+              src="/brand/logo/logo-h-light.svg" 
+              alt="Zenitry Logo" 
+              className="h-[26px] w-auto object-contain hidden dark:block" 
+            />
+          </div>
 
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-[var(--color-text)]">충진품 자주측정 ({record.mainMode})</h1>
-              <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 uppercase tracking-widest font-mono">Filling Product Measurement Record</p>
-            </div>
-            <div className="flex bg-[var(--color-primary-bg)] p-1 rounded-xl">
+          {/* 측정 분류 모드 */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">분류 모드</label>
+            <div className="flex bg-[var(--color-primary-bg)] p-1 rounded-xl w-full">
               {(['충진', '포장'] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setRecord(prev => ({ ...prev, mainMode: m }))}
                   className={cn(
-                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    "flex-1 py-1.5 rounded-lg text-xs font-bold transition-all",
                     record.mainMode === m 
                       ? "bg-white text-zinc-800 shadow-sm" 
                       : "text-zinc-500 hover:text-zinc-700"
@@ -1138,36 +1563,42 @@ function AppContent() {
               ))}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          {/* 메뉴 세로 리스트 */}
+          <nav className="flex flex-col gap-2">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">메뉴 목록</label>
+            
+            {user && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-50 border border-zinc-100 rounded-xl text-xs font-medium text-zinc-600 mb-2 truncate">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-5 h-5 rounded-full shrink-0" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-zinc-200 flex items-center justify-center text-[10px] text-zinc-500 font-bold shrink-0">
+                    {user.displayName?.charAt(0) || 'U'}
+                  </div>
+                )}
+                <span className="truncate">{user.displayName} 님</span>
+              </div>
+            )}
+
             {user ? (
-              <>
-                <div className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 rounded-full text-xs font-medium text-zinc-600">
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt="" className="w-5 h-5 rounded-full" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-5 h-5 rounded-full bg-zinc-200 flex items-center justify-center text-[10px] text-zinc-500 font-bold">
-                      {user.displayName?.charAt(0) || 'U'}
-                    </div>
-                  )}
-                  {user.displayName}
-                </div>
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-300 rounded-full text-sm hover:bg-zinc-50 transition-all shadow-sm"
-                >
-                  <LogOut size={16} />
-                  로그아웃
-                </button>
-              </>
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
+              >
+                <LogOut size={14} className="text-zinc-400" />
+                로그아웃
+              </button>
             ) : (
               <button 
                 onClick={handleLogin}
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-800 text-white rounded-full text-sm hover:bg-zinc-700 transition-all shadow-md"
+                className="flex items-center gap-3 px-4 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 transition-all shadow-md w-full text-left cursor-pointer"
               >
-                <LogIn size={16} />
+                <LogIn size={14} />
                 구글 로그인
               </button>
             )}
+
             <button 
               onClick={() => {
                 if (!user) {
@@ -1176,526 +1607,71 @@ function AppContent() {
                 }
                 setShowSettings(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-300 rounded-full text-sm hover:bg-zinc-50 transition-all shadow-sm"
+              className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
             >
-              <Settings size={16} />
+              <Settings size={14} className="text-zinc-400" />
               환경설정
             </button>
+
             <button 
               onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-300 rounded-full text-sm hover:bg-zinc-50 transition-all shadow-sm"
+              className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
             >
-              <History size={16} />
+              <History size={14} className="text-zinc-400" />
               기록 내역
             </button>
+
             <button 
               onClick={resetForm}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-300 rounded-full text-sm hover:bg-zinc-50 transition-all shadow-sm"
+              className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
             >
-              <Plus size={16} />
+              <Plus size={14} className="text-zinc-400" />
               새 기록
             </button>
+
             <button 
               onClick={saveRecord}
               disabled={isSaving || !user}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 text-white rounded-full text-sm hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
+              className="flex items-center gap-3 px-4 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md w-full text-left cursor-pointer"
             >
-              {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               저장
             </button>
-          </div>
+
+            <button 
+              onClick={() => setShowPrintPreview(true)}
+              className="flex items-center gap-3 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-md w-full text-left mt-2 cursor-pointer"
+            >
+              <CheckCircle2 size={14} />
+              보고서 발행
+            </button>
+          </nav>
         </div>
 
-        {/* Settings Modal */}
-        <AnimatePresence>
-          {showSettings && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col"
-              >
-                <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
-                  <div>
-                    <h2 className="text-xl font-bold text-zinc-800">환경설정</h2>
-                    <p className="text-xs text-zinc-400 mt-1 uppercase tracking-widest font-mono">Application Settings</p>
-                  </div>
-                  <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-                    <X size={20} />
-                  </button>
-                </div>
+        <div className="text-[10px] text-zinc-400 font-mono text-center border-t border-zinc-100 pt-4">
+          (주)제니트리
+        </div>
+      </aside>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                  {!user ? (
-                    <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                      <AlertCircle size={48} className="text-zinc-300" />
-                      <p className="text-zinc-500 font-medium">로그인이 필요합니다.</p>
-                      <button 
-                        onClick={() => {
-                          setShowSettings(false);
-                          handleLogin();
-                        }}
-                        className="px-6 py-2 bg-zinc-800 text-white rounded-full text-sm font-bold hover:bg-zinc-700 transition-all"
-                      >
-                        구글 로그인하기
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Items Settings */}
-                      <section className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
-                        <Package size={16} /> 품목 및 중량 설정
-                      </h3>
-                      <button 
-                        onClick={() => {
-                          const newItems = [...settings.items, { name: '', standardWeight: null, underweightTolerance: null, overweightTolerance: null }];
-                          saveSettings({ ...settings, items: newItems });
-                        }}
-                        className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1"
-                      >
-                        <Plus size={14} /> 품목 추가
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-                      {settings.items.map((item, idx) => (
-                        <div key={idx} className="relative group">
-                          <div className={cn(
-                            "p-4 bg-zinc-50 rounded-2xl border border-zinc-100 grid grid-cols-1 md:grid-cols-4 gap-4 items-end transition-all",
-                            deletingItemIdx === idx && "opacity-50 blur-[1px]"
-                          )}>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-zinc-400">품목명</label>
-                              <input 
-                                type="text" 
-                                value={item.name} 
-                                onChange={(e) => {
-                                  const newItems = [...settings.items];
-                                  newItems[idx].name = e.target.value;
-                                  setSettings({ ...settings, items: newItems });
-                                }}
-                                className="w-full bg-white border-none rounded-lg text-sm focus:ring-2 focus:ring-zinc-200"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-zinc-400">정식중량 (g)</label>
-                              <NumberInputWithButtons
-                                value={item.standardWeight}
-                                onChange={(val) => {
-                                  const newItems = [...settings.items];
-                                  newItems[idx].standardWeight = val;
-                                  setSettings({ ...settings, items: newItems });
-                                }}
-                                step={0.1}
-                                className="bg-white border-zinc-100"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-zinc-400">미달 (g)</label>
-                                <NumberInputWithButtons
-                                  value={item.underweightTolerance}
-                                  onChange={(val) => {
-                                    const newItems = [...settings.items];
-                                    newItems[idx].underweightTolerance = val;
-                                    setSettings({ ...settings, items: newItems });
-                                  }}
-                                  step={0.1}
-                                  className="bg-white border-zinc-100"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-zinc-400">초과 (g)</label>
-                                <NumberInputWithButtons
-                                  value={item.overweightTolerance}
-                                  onChange={(val) => {
-                                    const newItems = [...settings.items];
-                                    newItems[idx].overweightTolerance = val;
-                                    setSettings({ ...settings, items: newItems });
-                                  }}
-                                  step={0.1}
-                                  className="bg-white border-zinc-100"
-                                />
-                              </div>
-                            </div>
-                            <button 
-                              onClick={() => setDeletingItemIdx(idx)}
-                              className="p-2 text-zinc-300 hover:text-red-500 transition-colors justify-self-end"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
+      {/* ── 2. 메인 콘텐츠 영역 (인쇄 시 숨김) ── */}
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto space-y-6 print-hidden">
+        {/* 상단 가운데 정렬 제목 */}
+        <header className="text-center py-4 border-b border-[var(--color-border)]">
+          <h1 className="text-2xl font-black tracking-tight text-[var(--color-text)]">
+            충진품 자주측정 ({record.mainMode})
+          </h1>
+          <p className="text-xs text-[var(--color-text-secondary)] mt-1 uppercase tracking-widest font-mono">
+            Filling Product Measurement Record
+          </p>
+        </header>
 
-                          <AnimatePresence>
-                            {deletingItemIdx === idx && (
-                              <motion.div 
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="absolute inset-0 bg-white/80 backdrop-blur-[1px] rounded-2xl flex items-center justify-center gap-3 p-4 z-10"
-                              >
-                                <span className="text-xs font-bold text-zinc-600">이 품목을 삭제할까요?</span>
-                                <div className="flex gap-2">
-                                  <button 
-                                    onClick={() => {
-                                      const newItems = settings.items.filter((_, i) => i !== idx);
-                                      setSettings({ ...settings, items: newItems });
-                                      setDeletingItemIdx(null);
-                                    }}
-                                    className="px-4 py-2 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600 transition-colors"
-                                  >
-                                    삭제확인
-                                  </button>
-                                  <button 
-                                    onClick={() => setDeletingItemIdx(null)}
-                                    className="px-4 py-2 bg-zinc-200 text-zinc-600 text-[10px] font-bold rounded-lg hover:bg-zinc-300 transition-colors"
-                                  >
-                                    취소
-                                  </button>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-
-                  {/* Operator & Verifier Settings */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <section className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
-                          <User size={16} /> 측정자 (Verifier)
-                        </h3>
-                        <button 
-                          onClick={() => {
-                            const newVerifiers = [...(settings.verifiers || []), ''];
-                            setSettings({ ...settings, verifiers: newVerifiers });
-                          }}
-                          className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1"
-                        >
-                          <Plus size={14} /> 측정자 추가
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {(settings.verifiers || []).map((ver, idx) => (
-                          <div key={idx} className="relative group flex items-center gap-2">
-                            <input 
-                              type="text" 
-                              value={ver} 
-                              onChange={(e) => {
-                                const newVers = [...settings.verifiers];
-                                newVers[idx] = e.target.value;
-                                setSettings({ ...settings, verifiers: newVers });
-                              }}
-                              placeholder="측정자 성명"
-                              className="flex-1 bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-3"
-                            />
-                            <button 
-                              onClick={() => {
-                                const newVers = settings.verifiers.filter((_, i) => i !== idx);
-                                setSettings({ ...settings, verifiers: newVers });
-                              }}
-                              className="p-2 text-zinc-300 hover:text-red-500 transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                    
-                    <section className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
-                          <User size={16} /> 확인자 (Operator)
-                        </h3>
-                        <button 
-                          onClick={() => {
-                            const newOperators = [...(settings.operators || []), ''];
-                            setSettings({ ...settings, operators: newOperators });
-                          }}
-                          className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1"
-                        >
-                          <Plus size={14} /> 확인자 추가
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {(settings.operators || []).map((op, idx) => (
-                          <div key={idx} className="relative group flex items-center gap-2">
-                            <input 
-                              type="text" 
-                              value={op} 
-                              onChange={(e) => {
-                                const newOps = [...settings.operators];
-                                newOps[idx] = e.target.value;
-                                setSettings({ ...settings, operators: newOps });
-                              }}
-                              placeholder="확인자 성명"
-                              className="flex-1 bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-3"
-                            />
-                            <button 
-                              onClick={() => {
-                                const newOps = settings.operators.filter((_, i) => i !== idx);
-                                setSettings({ ...settings, operators: newOps });
-                              }}
-                              className="p-2 text-zinc-300 hover:text-red-500 transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  </div>
-
-
-
-                  {/* Google Sheets Sync Settings */}
-                  <section className="p-6 border-t border-zinc-100 space-y-4">
-                    <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
-                      <Link size={16} /> 구글 시트 동기화 설정
-                    </h3>
-                    <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100 space-y-2">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">구글 앱스스크립트(웹 앱) URL</label>
-                        <input 
-                          type="text" 
-                          value={settings.scriptUrl || ''} 
-                          onChange={(e) => setSettings({ ...settings, scriptUrl: e.target.value })}
-                          placeholder="https://script.google.com/macros/s/.../exec"
-                          className="w-full bg-white border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-200 p-2"
-                        />
-                      </div>
-                      <p className="text-[10px] text-zinc-400">
-                        * 구글 앱스스크립트 웹 앱 URL을 입력하세요. 저장 시 데이터가 해당 시트로 자동 전송됩니다.
-                      </p>
-                      <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                        <p className="text-[10px] text-blue-600 leading-relaxed">
-                          <strong>통함 시트 알림:</strong> '충진1'의 '중량' 데이터는 '중량' 시트에, 그 외 모든 데이터는 '그 외' 시트에 한 줄씩 기록됩니다.
-                        </p>
-                      </div>
-                    </div>
-                  </section>
-                </>
-              )}
-            </div>
-
-                <div className="p-6 border-t border-zinc-100 bg-zinc-50 flex justify-end gap-3">
-                  <button 
-                    onClick={() => setShowSettings(false)}
-                    className="px-6 py-3 bg-white border border-zinc-300 text-zinc-600 rounded-xl font-bold hover:bg-zinc-50 transition-all"
-                  >
-                    취소
-                  </button>
-                  <button 
-                    onClick={async () => {
-                      await saveSettings(settings);
-                      setShowSettings(false);
-                    }}
-                    disabled={isSavingSettings}
-                    className="px-8 py-3 bg-zinc-800 text-white rounded-xl font-bold hover:bg-zinc-700 transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {isSavingSettings ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                    설정 저장
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
-        {/* History Panel */}
-        <AnimatePresence>
-          {showHistory && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden bg-white border border-zinc-200 rounded-2xl shadow-inner"
-            >
-              <div className="p-4 space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-400 shrink-0">최근 기록</h3>
-                  
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 bg-zinc-50 px-3 py-1.5 rounded-xl border border-zinc-100">
-                      <Calendar size={14} className="text-zinc-400" />
-                      <input 
-                        type="date" 
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
-                        className="bg-transparent border-none text-[11px] font-bold focus:ring-0 p-0 w-24"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-zinc-50 px-3 py-1.5 rounded-xl border border-zinc-100">
-                      <Package size={14} className="text-zinc-400" />
-                      <select 
-                        value={filterItem}
-                        onChange={(e) => setFilterItem(e.target.value)}
-                        className="bg-transparent border-none text-[11px] font-bold focus:ring-0 p-0 min-w-[100px]"
-                      >
-                        <option value="">품목 전체</option>
-                        {settings.items.map((item, idx) => (
-                          <option key={idx} value={item.name}>{item.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-zinc-50 px-3 py-1.5 rounded-xl border border-zinc-100">
-                      <Hash size={14} className="text-zinc-400" />
-                      <input 
-                        type="text" 
-                        placeholder="로트번호 검색"
-                        value={filterLot}
-                        onChange={(e) => setFilterLot(e.target.value)}
-                        className="bg-transparent border-none text-[11px] font-bold focus:ring-0 p-0 w-24 placeholder:text-zinc-300"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-zinc-50 px-3 py-1.5 rounded-xl border border-zinc-100">
-                      <Layers size={14} className="text-zinc-400" />
-                      <select 
-                        value={filterMode}
-                        onChange={(e) => setFilterMode(e.target.value)}
-                        className="bg-transparent border-none text-[11px] font-bold focus:ring-0 p-0 min-w-[80px]"
-                      >
-                        <option value="">모드 전체</option>
-                        <option value="충진1">충진1</option>
-                        <option value="충진2">충진2</option>
-                        <option value="포장">포장</option>
-                      </select>
-                    </div>
-
-                    {(filterDate || filterItem || filterLot || filterMode) && (
-                      <button 
-                        onClick={() => {
-                          setFilterDate('');
-                          setFilterItem('');
-                          setFilterLot('');
-                          setFilterMode('');
-                        }}
-                        className="text-[10px] font-bold text-red-500 hover:text-red-600 underline underline-offset-2"
-                      >
-                        필터 초기화
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {!user ? (
-                  <p className="text-sm text-zinc-400 italic py-4 text-center">로그인 후 기록을 확인할 수 있습니다.</p>
-                ) : filteredHistory.length === 0 ? (
-                  <p className="text-sm text-zinc-400 italic py-4 text-center">검색 결과가 없습니다.</p>
-                ) : (
-                  <div className="max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {filteredHistory.map((h) => (
-                      <div
-                        key={h.id}
-                        className="relative"
-                      >
-                        <button
-                          onClick={() => !deletingId && loadRecord(h)}
-                          className={cn(
-                            "w-full text-left p-3 border border-zinc-100 rounded-xl hover:border-zinc-300 hover:bg-zinc-50 transition-all group relative",
-                            deletingId === h.id && "border-red-200 bg-red-50/30"
-                          )}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold text-zinc-700 group-hover:text-zinc-900">{h.itemName || '품목명 없음'}</span>
-                              <div className="flex gap-1 mt-0.5">
-                                {h.mainMode === '포장' ? (
-                                  <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[9px] font-bold rounded uppercase">포장</span>
-                                ) : (
-                                  <span className={cn(
-                                    "px-1.5 py-0.5 text-[9px] font-bold rounded uppercase",
-                                    h.subMode === '충진2' ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"
-                                  )}>
-                                    {h.subMode || '충진1'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end shrink-0 pt-1">
-                              <span className="text-[9px] font-bold text-zinc-500">
-                                {h.mainMode === '포장' ? '포장일' : '충진일'} : {h.fillingDate || '-'}
-                              </span>
-                              <span className="text-[10px] font-mono text-zinc-400 mt-0.5">{format(h.createdAt, 'yyyy/MM/dd HH:mm')}</span>
-                            </div>
-                          </div>
-                          <div className="text-xs text-zinc-500 mt-1">Lot: {h.lotNumber || '-'}</div>
-                          
-                          {deletingId !== h.id && (
-                            <div 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeletingId(h.id);
-                              }}
-                              className="absolute top-2 right-2 p-1 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <Trash2 size={14} />
-                            </div>
-                          )}
-                        </button>
-
-                        <AnimatePresence>
-                          {deletingId === h.id && (
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              className="absolute inset-0 bg-white/90 backdrop-blur-[1px] rounded-xl flex items-center justify-center gap-2 p-2 z-10"
-                            >
-                              <button 
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await deleteDoc(doc(db, 'records', h.id));
-                                    if (record.id === h.id) resetForm();
-                                    setDeletingId(null);
-                                  } catch (error) {
-                                    handleFirestoreError(error, OperationType.DELETE, `records/${h.id}`);
-                                  }
-                                }}
-                                className="flex-1 py-2 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600 transition-colors"
-                              >
-                                삭제확인
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeletingId(null);
-                                }}
-                                className="flex-1 py-2 bg-zinc-200 text-zinc-600 text-[10px] font-bold rounded-lg hover:bg-zinc-300 transition-colors"
-                              >
-                                취소
-                              </button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Main Content Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* 대시보드 레이아웃 (확대/축소 카드로 래핑) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* Metadata Form */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm space-y-4">
-              <div className="flex justify-between items-center mb-4">
+          {/* 기본 정보 설정 및 가이드 (드래그 확대/축소 지원) */}
+          <div className="resizable-card bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm space-y-6" style={{ minWidth: '280px', minHeight: '350px' }}>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center mb-2">
                 <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">기본 정보 설정</h2>
                 {record.mainMode === '충진' && (
                   <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
@@ -1738,7 +1714,7 @@ function AppContent() {
                         setRecord({ ...record, itemName: e.target.value });
                       }
                     }}
-                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200"
+                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
                   >
                     <option value="">품목 선택...</option>
                     {settings.items.map((item, idx) => (
@@ -1758,7 +1734,7 @@ function AppContent() {
                     type="text"
                     value={record.lotNumber}
                     onChange={(e) => setRecord({ ...record, lotNumber: e.target.value })}
-                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200"
+                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
                     placeholder="예: LOT20240326"
                   />
                 </div>
@@ -1771,46 +1747,11 @@ function AppContent() {
                     type="date"
                     value={record.fillingDate}
                     onChange={(e) => setRecord({ ...record, fillingDate: e.target.value })}
-                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200"
+                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
                   />
                 </div>
 
-                {!(record.mainMode === '충진' && record.subMode === '충진1') && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-                        <User size={12} /> 측정자
-                      </label>
-                      <select
-                        value={record.verifier}
-                        onChange={(e) => setRecord({ ...record, verifier: e.target.value })}
-                        className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200"
-                      >
-                        <option value="">선택...</option>
-                        {(settings.verifiers || []).map((ver, i) => (
-                          <option key={i} value={ver}>{ver}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-                        <User size={12} /> 확인자
-                      </label>
-                      <select
-                        value={record.operator}
-                        onChange={(e) => setRecord({ ...record, operator: e.target.value })}
-                        className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200"
-                      >
-                        <option value="">선택...</option>
-                        {(settings.operators || []).map((op, i) => (
-                          <option key={i} value={op}>{op}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {record.mainMode === '충진' && record.subMode === '충진1' && (
+                {record.mainMode === '충진' && record.subMode === '충진1' ? (
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
@@ -1850,150 +1791,128 @@ function AppContent() {
                         />
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4 pt-2">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-                          <User size={12} /> 측정자
-                        </label>
-                        <select
-                          value={record.verifier}
-                          onChange={(e) => setRecord({ ...record, verifier: e.target.value })}
-                          className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200"
-                        >
-                          <option value="">선택...</option>
-                          {(settings.verifiers || []).map((ver, i) => (
-                            <option key={i} value={ver}>{ver}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
-                          <User size={12} /> 확인자
-                        </label>
-                        <select
-                          value={record.operator}
-                          onChange={(e) => setRecord({ ...record, operator: e.target.value })}
-                          className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200"
-                        >
-                          <option value="">선택...</option>
-                          {(settings.operators || []).map((op, i) => (
-                            <option key={i} value={op}>{op}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
                   </div>
-                )}
+                ) : null}
 
-
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                      <User size={12} /> 측정자
+                    </label>
+                    <select
+                      value={record.verifier}
+                      onChange={(e) => setRecord({ ...record, verifier: e.target.value })}
+                      className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
+                    >
+                      <option value="">선택...</option>
+                      {(settings.verifiers || []).map((ver, i) => (
+                        <option key={i} value={ver}>{ver}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                      <User size={12} /> 확인자
+                    </label>
+                    <select
+                      value={record.operator}
+                      onChange={(e) => setRecord({ ...record, operator: e.target.value })}
+                      className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
+                    >
+                      <option value="">선택...</option>
+                      {(settings.operators || []).map((op, i) => (
+                        <option key={i} value={op}>{op}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div className="bg-zinc-800 text-white p-6 rounded-3xl shadow-lg">
-              <div className="flex items-center gap-3 mb-4">
-                <AlertCircle className="text-zinc-400" size={20} />
-                <h3 className="text-sm font-bold">계측 가이드</h3>
+            
+            <div className="bg-zinc-800 text-white p-4 rounded-2xl shadow-sm space-y-2 text-xs">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertCircle size={14} className="text-zinc-400" />
+                <span className="font-bold">계측 핵심 가이드</span>
               </div>
-              <ul className="text-xs space-y-2 text-zinc-400">
-                <li className="flex items-start gap-2">
-                  <span className="text-zinc-500">•</span>
-                  <span>매 시간 무작위로 3개의 바이알을 채취하여 측정합니다.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-zinc-500">•</span>
-                  <span>평균값이 허용오차를 벗어날 경우 반드시 일탈 사유를 기록하십시오.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-zinc-500">•</span>
-                  <span className="text-red-400 font-bold">빨간색</span>: 허용오차 미달 (부족)
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-zinc-500">•</span>
-                  <span className="text-blue-400 font-bold">파란색</span>: 허용오차 초과 (과다)
-                </li>
-              </ul>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                • 매 시간 무작위 시료 3개를 채취해 기록.<br />
+                • 판정 오차가 기준을 벗어나면 사유 기재.<br />
+                • <span className="text-red-400 font-bold">빨간색</span>: 규격 이하 / <span className="text-blue-400 font-bold">파란색</span>: 규격 초과
+              </p>
             </div>
           </div>
 
-          {/* Measurement Table */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden overflow-x-auto">
+          {/* 계측 테이블 (드래그 확대/축소 지원) */}
+          <div className="resizable-card lg:col-span-2 bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col" style={{ minWidth: '350px', minHeight: '350px' }}>
+            <div className="flex-1 overflow-auto">
               <table className={cn(
-                "w-full border-collapse",
-                record.mainMode === '포장' ? "min-w-[1580px]" : "min-w-[680px]"
+                "w-full border-collapse text-left",
+                record.mainMode === '포장' ? "min-w-[1200px]" : "min-w-[650px]"
               )}>
                 <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-200">
-                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 w-20 min-w-[80px]">시간</th>
-                    
+                  <tr className="bg-zinc-50 border-b border-zinc-200 text-xs font-bold text-zinc-500">
+                    <th className="p-3 text-center w-20">시간</th>
                     {record.mainMode === '충진' && record.subMode === '충진1' && (
                       <>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-zinc-300 w-[300px]">중량</th>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-r-2 border-zinc-300 w-[300px]">캡</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">중량 (g)</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">캡 상태</th>
                       </>
                     )}
-
                     {record.mainMode === '충진' && record.subMode === '충진2' && (
                       <>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-zinc-300 w-[300px]">스티커</th>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-r-2 border-zinc-300 w-[300px]">날인</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">스티커 상태</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">날인 상태</th>
                       </>
                     )}
-
                     {record.mainMode === '포장' && (
                       <>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-zinc-300 w-[300px]">날인</th>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-zinc-300 w-[300px]">캡</th>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-zinc-300 w-[300px]">스티커</th>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-zinc-300 w-[300px]">스크래치</th>
-                        <th colSpan={3} className="p-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-l-2 border-r-2 border-zinc-300 w-[300px]">이물</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">날인</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">캡</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">스티커</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">스크래치</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">이물</th>
                       </>
                     )}
                   </tr>
-                  {/* Sub-headers for vials */}
-                  <tr className="bg-zinc-50/50 border-b border-zinc-100 text-[9px] text-zinc-400">
-                    <th className="p-2 w-20 min-w-[80px]">Time</th>
-                    
+                  <tr className="bg-zinc-50/50 border-b border-zinc-100 text-[10px] text-zinc-400">
+                    <th className="p-2 text-center">Time</th>
                     {record.mainMode === '충진' && record.subMode === '충진1' && (
                       <>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V3</th>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 border-r-2 border-zinc-300 w-[100px] min-w-[100px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
                       </>
                     )}
-
                     {record.mainMode === '충진' && record.subMode === '충진2' && (
                       <>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V3</th>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 border-r-2 border-zinc-300 w-[100px] min-w-[100px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
                       </>
                     )}
-
                     {record.mainMode === '포장' && (
                       <>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V3</th>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V3</th>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V3</th>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V3</th>
-                        <th className="p-2 border-l-2 border-zinc-300 w-[100px] min-w-[100px]">V1</th>
-                        <th className="p-2 w-[100px] min-w-[100px]">V2</th>
-                        <th className="p-2 border-r-2 border-zinc-300 w-[100px] min-w-[100px] text-transparent select-none">...</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
+                        <th className="p-2 text-center w-[70px]">V2</th>
+                        <th className="p-2 text-center w-[70px]">V3</th>
                       </>
                     )}
                   </tr>
@@ -2017,155 +1936,711 @@ function AppContent() {
                   ))}
                 </tbody>
               </table>
-              <div className="p-4 bg-zinc-50 flex flex-wrap justify-center gap-x-8 gap-y-4 border-t border-zinc-200">
-                <div className="flex gap-4 items-center">
-                  <button 
-                    onClick={() => {
-                      const firstTime = record.measurements[0]?.time || "09:00";
-                      const [h, m] = firstTime.split(':').map(Number);
-                      let prevH = (h - 1 + 24) % 24;
-                      if (prevH === 13) prevH = 12;
-                      const prevTime = `${prevH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                      setRecord({
-                        ...record,
-                        measurements: [
-                          { 
-                            id: Math.random().toString(36).substr(2, 9), 
-                            time: prevTime, 
-                            vials: [null, null, null], 
-                            vialMemo: '',
-                            capStatus: [null, null, null],
-                            capMemo: '',
-                            stickerStatus: [null, null, null],
-                            stickerMemo: '',
-                            printingStatus: [null, null, null],
-                            printingMemo: '',
-                            scratchStatus: [null, null, null],
-                            scratchMemo: '',
-                            foreignStatus: [null, null, null],
-                            foreignMemo: '',
-                            isExpanded: false
-                          },
-                          ...record.measurements
-                        ]
-                      });
-                    }}
-                    className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 transition-colors"
-                  >
-                    <Plus size={14} /> 윗 시간대 추가
-                  </button>
-                  
-                  <div className="relative">
-                    {!isDeletingTopRow ? (
-                      <button 
-                        onClick={() => setIsDeletingTopRow(true)}
-                        className="text-[var(--fs-sm)] font-bold text-[var(--color-error)] hover:text-[var(--color-error-hover)] flex items-center gap-1 transition-colors"
-                      >
-                        <Trash2 size={14} /> 윗 시간대 삭제
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2 bg-[var(--color-bg-container)] border border-[var(--color-error-border)] rounded-lg p-1 shadow-sm">
-                        <button 
-                          onClick={() => {
-                            if (record.measurements.length > 1) {
-                              setRecord({
-                                ...record,
-                                measurements: record.measurements.slice(1)
-                              });
-                            }
-                            setIsDeletingTopRow(false);
-                          }}
-                          className="px-2 py-1 bg-[var(--color-error)] text-white text-[var(--fs-sm)] font-bold rounded hover:bg-[var(--color-error-hover)] transition-colors"
-                        >
-                          삭제확인
-                        </button>
-                        <button 
-                          onClick={() => setIsDeletingTopRow(false)}
-                          className="px-2 py-1 bg-[var(--color-primary-bg)] text-[var(--color-text)] text-[var(--fs-sm)] font-bold rounded hover:bg-[var(--color-border)] transition-colors"
-                        >
-                          취소
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            </div>
 
-                <div className="flex gap-4 items-center">
+            {/* 시간대 조절판 */}
+            <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex flex-wrap justify-center gap-6">
+              <div className="flex gap-4 items-center">
+                <button 
+                  onClick={() => {
+                    const firstTime = record.measurements[0]?.time || "09:00";
+                    const [h, m] = firstTime.split(':').map(Number);
+                    let prevH = (h - 1 + 24) % 24;
+                    if (prevH === 13) prevH = 12;
+                    const prevTime = `${prevH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                    setRecord({
+                      ...record,
+                      measurements: [
+                        { 
+                          id: Math.random().toString(36).substr(2, 9), 
+                          time: prevTime, 
+                          vials: [null, null, null], 
+                          vialMemo: '',
+                          capStatus: [null, null, null],
+                          capMemo: '',
+                          stickerStatus: [null, null, null],
+                          stickerMemo: '',
+                          printingStatus: [null, null, null],
+                          printingMemo: '',
+                          scratchStatus: [null, null, null],
+                          scratchMemo: '',
+                          foreignStatus: [null, null, null],
+                          foreignMemo: '',
+                          isExpanded: false
+                        },
+                        ...record.measurements
+                      ]
+                    });
+                  }}
+                  className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus size={12} /> 윗 시간대 추가
+                </button>
+                
+                {!isDeletingTopRow ? (
                   <button 
-                    onClick={() => {
-                      const lastTime = record.measurements[record.measurements.length - 1]?.time || "17:00";
-                      const [h, m] = lastTime.split(':').map(Number);
-                      let nextH = (h + 1) % 24;
-                      if (nextH === 13) nextH = 14;
-                      const nextTime = `${nextH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                      setRecord({
-                        ...record,
-                        measurements: [
-                          ...record.measurements,
-                          { 
-                            id: Math.random().toString(36).substr(2, 9), 
-                            time: nextTime, 
-                            vials: [null, null, null], 
-                            vialMemo: '',
-                            capStatus: [null, null, null],
-                            capMemo: '',
-                            stickerStatus: [null, null, null],
-                            stickerMemo: '',
-                            printingStatus: [null, null, null],
-                            printingMemo: '',
-                            scratchStatus: [null, null, null],
-                            scratchMemo: '',
-                            foreignStatus: [null, null, null],
-                            foreignMemo: '',
-                            isExpanded: false
-                          }
-                        ]
-                      });
-                    }}
-                    className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 transition-colors"
+                    onClick={() => setIsDeletingTopRow(true)}
+                    className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 cursor-pointer"
                   >
-                    <Plus size={14} /> 아랫 시간대 추가
+                    <Trash2 size={12} /> 윗 시간대 삭제
                   </button>
-                  
-                  <div className="relative">
-                    {!isDeletingBottomRow ? (
-                      <button 
-                        onClick={() => setIsDeletingBottomRow(true)}
-                        className="text-[var(--fs-sm)] font-bold text-[var(--color-error)] hover:text-[var(--color-error-hover)] flex items-center gap-1 transition-colors"
-                      >
-                        <Trash2 size={14} /> 아랫 시간대 삭제
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2 bg-[var(--color-bg-container)] border border-[var(--color-error-border)] rounded-lg p-1 shadow-sm">
-                        <button 
-                          onClick={() => {
-                            if (record.measurements.length > 1) {
-                              setRecord({
-                                ...record,
-                                measurements: record.measurements.slice(0, -1)
-                              });
-                            }
-                            setIsDeletingBottomRow(false);
-                          }}
-                          className="px-2 py-1 bg-[var(--color-error)] text-white text-[var(--fs-sm)] font-bold rounded hover:bg-[var(--color-error-hover)] transition-colors"
-                        >
-                          삭제확인
-                        </button>
-                        <button 
-                          onClick={() => setIsDeletingBottomRow(false)}
-                          className="px-2 py-1 bg-[var(--color-primary-bg)] text-[var(--color-text)] text-[var(--fs-sm)] font-bold rounded hover:bg-[var(--color-border)] transition-colors"
-                        >
-                          취소
-                        </button>
-                      </div>
-                    )}
+                ) : (
+                  <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg p-1 shadow-sm text-[10px]">
+                    <button 
+                      onClick={() => {
+                        if (record.measurements.length > 1) {
+                          setRecord({ ...record, measurements: record.measurements.slice(1) });
+                        }
+                        setIsDeletingTopRow(false);
+                      }}
+                      className="px-2 py-0.5 bg-red-500 text-white rounded font-bold"
+                    >
+                      확인
+                    </button>
+                    <button onClick={() => setIsDeletingTopRow(false)} className="px-2 py-0.5 bg-zinc-100 rounded text-zinc-600 font-bold">
+                      취소
+                    </button>
                   </div>
-                </div>
+                )}
+              </div>
+
+              <div className="flex gap-4 items-center">
+                <button 
+                  onClick={() => {
+                    const lastTime = record.measurements[record.measurements.length - 1]?.time || "17:00";
+                    const [h, m] = lastTime.split(':').map(Number);
+                    let nextH = (h + 1) % 24;
+                    if (nextH === 13) nextH = 14;
+                    const nextTime = `${nextH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                    setRecord({
+                      ...record,
+                      measurements: [
+                        ...record.measurements,
+                        { 
+                          id: Math.random().toString(36).substr(2, 9), 
+                          time: nextTime, 
+                          vials: [null, null, null], 
+                          vialMemo: '',
+                          capStatus: [null, null, null],
+                          capMemo: '',
+                          stickerStatus: [null, null, null],
+                          stickerMemo: '',
+                          printingStatus: [null, null, null],
+                          printingMemo: '',
+                          scratchStatus: [null, null, null],
+                          scratchMemo: '',
+                          foreignStatus: [null, null, null],
+                          foreignMemo: '',
+                          isExpanded: false
+                        }
+                      ]
+                    });
+                  }}
+                  className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus size={12} /> 아랫 시간대 추가
+                </button>
+                
+                {!isDeletingBottomRow ? (
+                  <button 
+                    onClick={() => setIsDeletingBottomRow(true)}
+                    className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 size={12} /> 아랫 시간대 삭제
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg p-1 shadow-sm text-[10px]">
+                    <button 
+                      onClick={() => {
+                        if (record.measurements.length > 1) {
+                          setRecord({ ...record, measurements: record.measurements.slice(0, -1) });
+                        }
+                        setIsDeletingBottomRow(false);
+                      }}
+                      className="px-2 py-0.5 bg-red-500 text-white rounded font-bold"
+                    >
+                      확인
+                    </button>
+                    <button onClick={() => setIsDeletingBottomRow(false)} className="px-2 py-0.5 bg-zinc-100 rounded text-zinc-600 font-bold">
+                      취소
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
+
+          {/* 측정항목 그래프 (충진1 모드일 때만 그래프와 종합 평균 표시) */}
+          {record.mainMode === '충진' && record.subMode === '충진1' && (
+            <div className="resizable-card lg:col-span-3" style={{ minWidth: '350px', minHeight: '260px' }}>
+              <WeightChart 
+                measurements={record.measurements} 
+                standardWeight={record.standardWeight} 
+                underweightTolerance={record.underweightTolerance} 
+                overweightTolerance={record.overweightTolerance} 
+              />
+            </div>
+          )}
+
         </div>
-      </div>
+      </main>
+
+      {/* ── 3. 설정 모달 ── */}
+      <AnimatePresence>
+        {showSettings && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-zinc-800">환경설정</h2>
+                  <p className="text-xs text-zinc-400 mt-1 uppercase tracking-widest font-mono">Application Settings</p>
+                </div>
+                <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {!user ? (
+                  <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                    <AlertCircle size={48} className="text-zinc-300" />
+                    <p className="text-zinc-500 font-medium">로그인이 필요합니다.</p>
+                    <button 
+                      onClick={() => {
+                        setShowSettings(false);
+                        handleLogin();
+                      }}
+                      className="px-6 py-2 bg-zinc-800 text-white rounded-full text-sm font-bold hover:bg-zinc-700 transition-all cursor-pointer"
+                    >
+                      구글 로그인하기
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <section className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
+                          <Package size={16} /> 품목 및 중량 설정
+                        </h3>
+                        <button 
+                          onClick={() => {
+                            const newItems = [...settings.items, { name: '', standardWeight: null, underweightTolerance: null, overweightTolerance: null }];
+                            setSettings({ ...settings, items: newItems });
+                          }}
+                          className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus size={14} /> 품목 추가
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        {settings.items.map((item, idx) => (
+                          <div key={idx} className="relative group">
+                            <div className={cn(
+                              "p-4 bg-zinc-50 rounded-2xl border border-zinc-100 grid grid-cols-1 md:grid-cols-4 gap-4 items-end transition-all",
+                              deletingItemIdx === idx && "opacity-50 blur-[1px]"
+                            )}>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-zinc-400">품목명</label>
+                                <input 
+                                  type="text" 
+                                  value={item.name} 
+                                  onChange={(e) => {
+                                    const newItems = [...settings.items];
+                                    newItems[idx].name = e.target.value;
+                                    setSettings({ ...settings, items: newItems });
+                                  }}
+                                  className="w-full bg-white border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-100 p-2"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-zinc-400">정식중량 (g)</label>
+                                <NumberInputWithButtons
+                                  value={item.standardWeight}
+                                  onChange={(val) => {
+                                    const newItems = [...settings.items];
+                                    newItems[idx].standardWeight = val;
+                                    setSettings({ ...settings, items: newItems });
+                                  }}
+                                  step={0.1}
+                                  className="bg-white border-zinc-100"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-zinc-400">미달 (g)</label>
+                                  <NumberInputWithButtons
+                                    value={item.underweightTolerance}
+                                    onChange={(val) => {
+                                      const newItems = [...settings.items];
+                                      newItems[idx].underweightTolerance = val;
+                                      setSettings({ ...settings, items: newItems });
+                                    }}
+                                    step={0.1}
+                                    className="bg-white border-zinc-100"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-zinc-400">초과 (g)</label>
+                                  <NumberInputWithButtons
+                                    value={item.overweightTolerance}
+                                    onChange={(val) => {
+                                      const newItems = [...settings.items];
+                                      newItems[idx].overweightTolerance = val;
+                                      setSettings({ ...settings, items: newItems });
+                                    }}
+                                    step={0.1}
+                                    className="bg-white border-zinc-100"
+                                  />
+                                </div>
+                              </div>
+                              <button 
+                                onClick={() => setDeletingItemIdx(idx)}
+                                className="p-2 text-zinc-300 hover:text-red-500 transition-colors justify-self-end cursor-pointer"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+
+                            <AnimatePresence>
+                              {deletingItemIdx === idx && (
+                                <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] rounded-2xl flex items-center justify-center gap-3 p-4 z-10">
+                                  <span className="text-xs font-bold text-zinc-600">이 품목을 삭제할까요?</span>
+                                  <div className="flex gap-2">
+                                    <button 
+                                      onClick={() => {
+                                        const newItems = settings.items.filter((_, i) => i !== idx);
+                                        setSettings({ ...settings, items: newItems });
+                                        setDeletingItemIdx(null);
+                                      }}
+                                      className="px-4 py-2 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600 transition-colors"
+                                    >
+                                      삭제확인
+                                    </button>
+                                    <button 
+                                      onClick={() => setDeletingItemIdx(null)}
+                                      className="px-4 py-2 bg-zinc-200 text-zinc-600 text-[10px] font-bold rounded-lg hover:bg-zinc-300 transition-colors"
+                                    >
+                                      취소
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <section className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
+                            <User size={16} /> 측정자 (Verifier)
+                          </h3>
+                          <button 
+                            onClick={() => {
+                              const newVerifiers = [...(settings.verifiers || []), ''];
+                              setSettings({ ...settings, verifiers: newVerifiers });
+                            }}
+                            className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus size={14} /> 측정자 추가
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {(settings.verifiers || []).map((ver, idx) => (
+                            <div key={idx} className="relative group flex items-center gap-2">
+                              <input 
+                                type="text" 
+                                value={ver} 
+                                onChange={(e) => {
+                                  const newVers = [...settings.verifiers];
+                                  newVers[idx] = e.target.value;
+                                  setSettings({ ...settings, verifiers: newVers });
+                                }}
+                                placeholder="측정자 성명"
+                                className="flex-1 bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3"
+                              />
+                              <button 
+                                onClick={() => {
+                                  const newVers = settings.verifiers.filter((_, i) => i !== idx);
+                                  setSettings({ ...settings, verifiers: newVers });
+                                }}
+                                className="p-2 text-zinc-300 hover:text-red-500 transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                      
+                      <section className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
+                            <User size={16} /> 확인자 (Operator)
+                          </h3>
+                          <button 
+                            onClick={() => {
+                              const newOperators = [...(settings.operators || []), ''];
+                              setSettings({ ...settings, operators: newOperators });
+                            }}
+                            className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus size={14} /> 확인자 추가
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {(settings.operators || []).map((op, idx) => (
+                            <div key={idx} className="relative group flex items-center gap-2">
+                              <input 
+                                type="text" 
+                                value={op} 
+                                onChange={(e) => {
+                                  const newOps = [...settings.operators];
+                                  newOps[idx] = e.target.value;
+                                  setSettings({ ...settings, operators: newOps });
+                                }}
+                                placeholder="확인자 성명"
+                                className="flex-1 bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3"
+                              />
+                              <button 
+                                onClick={() => {
+                                  const newOps = settings.operators.filter((_, i) => i !== idx);
+                                  setSettings({ ...settings, operators: newOps });
+                                }}
+                                className="p-2 text-zinc-300 hover:text-red-500 transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    </div>
+
+                    <section className="p-6 border-t border-zinc-100 space-y-4">
+                      <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
+                        <Link size={16} /> 구글 시트 동기화 설정
+                      </h3>
+                      <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100 space-y-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">구글 앱스스크립트(웹 앱) URL</label>
+                          <input 
+                            type="text" 
+                            value={settings.scriptUrl || ''} 
+                            onChange={(e) => setSettings({ ...settings, scriptUrl: e.target.value })}
+                            placeholder="https://script.google.com/macros/s/.../exec"
+                            className="w-full bg-white border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-100 p-2"
+                          />
+                        </div>
+                        <p className="text-[10px] text-zinc-400">
+                          * 웹 앱 URL 입력 시 구글 스프레드시트에 자동 동기화됩니다.
+                        </p>
+                      </div>
+                    </section>
+                  </>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-zinc-100 bg-zinc-50 flex justify-end gap-3">
+                <button 
+                  onClick={() => setShowSettings(false)}
+                  className="px-6 py-3 bg-white border border-zinc-300 text-zinc-600 rounded-xl font-bold hover:bg-zinc-50 transition-all cursor-pointer"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={async () => {
+                    await saveSettings(settings);
+                    setShowSettings(false);
+                  }}
+                  disabled={isSavingSettings}
+                  className="px-8 py-3 bg-zinc-800 text-white rounded-xl font-bold hover:bg-zinc-700 transition-all shadow-lg flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingSettings ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  설정 저장
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── 4. 기록 내역 조회 모달 (팝업 형식) ── */}
+      <AnimatePresence>
+        {showHistory && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-4xl max-h-[85vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-zinc-800">최근 측정 기록 내역</h2>
+                  <p className="text-xs text-zinc-400 mt-1 uppercase tracking-widest font-mono">Measurement History</p>
+                </div>
+                <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* 필터 설정 */}
+              <div className="p-6 bg-zinc-50 border-b border-zinc-100 flex flex-wrap gap-3 items-center text-xs">
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-zinc-200">
+                  <Calendar size={14} className="text-zinc-400" />
+                  <input 
+                    type="date" 
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="border-none font-bold focus:ring-0 p-0 w-24"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-zinc-200">
+                  <Package size={14} className="text-zinc-400" />
+                  <select 
+                    value={filterItem}
+                    onChange={(e) => setFilterItem(e.target.value)}
+                    className="border-none font-bold focus:ring-0 p-0 min-w-[100px]"
+                  >
+                    <option value="">품목 전체</option>
+                    {settings.items.map((item, idx) => (
+                      <option key={idx} value={item.name}>{item.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-zinc-200">
+                  <Hash size={14} className="text-zinc-400" />
+                  <input 
+                    type="text" 
+                    placeholder="로트번호 검색"
+                    value={filterLot}
+                    onChange={(e) => setFilterLot(e.target.value)}
+                    className="border-none font-bold focus:ring-0 p-0 w-28 placeholder:text-zinc-300"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-zinc-200">
+                  <Layers size={14} className="text-zinc-400" />
+                  <select 
+                    value={filterMode}
+                    onChange={(e) => setFilterMode(e.target.value)}
+                    className="border-none font-bold focus:ring-0 p-0 min-w-[80px]"
+                  >
+                    <option value="">모드 전체</option>
+                    <option value="충진1">충진1</option>
+                    <option value="충진2">충진2</option>
+                    <option value="포장">포장</option>
+                  </select>
+                </div>
+
+                {(filterDate || filterItem || filterLot || filterMode) && (
+                  <button 
+                    onClick={() => {
+                      setFilterDate('');
+                      setFilterItem('');
+                      setFilterLot('');
+                      setFilterMode('');
+                    }}
+                    className="text-red-500 hover:text-red-600 font-bold underline cursor-pointer"
+                  >
+                    필터 초기화
+                  </button>
+                )}
+              </div>
+
+              {/* 기록 목록 */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {!user ? (
+                  <p className="text-sm text-zinc-400 italic py-8 text-center">로그인 후 기록 조회가 가능합니다.</p>
+                ) : filteredHistory.length === 0 ? (
+                  <p className="text-sm text-zinc-400 italic py-8 text-center">조회된 데이터 내역이 없습니다.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredHistory.map((h) => (
+                      <div key={h.id} className="relative">
+                        <button
+                          onClick={() => !deletingId && loadRecord(h)}
+                          className={cn(
+                            "w-full text-left p-4 border border-zinc-200 rounded-2xl hover:border-zinc-400 hover:bg-zinc-50 transition-all group relative cursor-pointer bg-white",
+                            deletingId === h.id && "border-red-200 bg-red-50/20"
+                          )}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold text-zinc-700 group-hover:text-zinc-900 truncate max-w-[150px]">{h.itemName || '품목명 없음'}</span>
+                              <div className="flex gap-1 mt-1">
+                                {h.mainMode === '포장' ? (
+                                  <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[9px] font-bold rounded uppercase">포장</span>
+                                ) : (
+                                  <span className={cn(
+                                    "px-1.5 py-0.5 text-[9px] font-bold rounded uppercase",
+                                    h.subMode === '충진2' ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"
+                                  )}>
+                                    {h.subMode || '충진1'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end shrink-0 text-right">
+                              <span className="text-[9px] font-bold text-zinc-500">
+                                {h.mainMode === '포장' ? '포장일' : '충진일'}: {h.fillingDate || '-'}
+                              </span>
+                              <span className="text-[9px] font-mono text-zinc-400 mt-0.5">{format(h.createdAt, 'yyyy/MM/dd HH:mm')}</span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-zinc-500 mt-2 font-mono">Lot: {h.lotNumber || '-'}</div>
+                          
+                          {deletingId !== h.id && (
+                            <div 
+                              onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingId(h.id);
+                              }}
+                              className="absolute top-3 right-3 p-1 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            >
+                              <Trash2 size={14} />
+                            </div>
+                          )}
+                        </button>
+
+                        <AnimatePresence>
+                          {deletingId === h.id && (
+                            <div className="absolute inset-0 bg-white/95 backdrop-blur-[1px] rounded-2xl flex items-center justify-center gap-2 p-2 z-10">
+                              <button 
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await deleteDoc(doc(db, 'records', h.id));
+                                    if (record.id === h.id) resetForm();
+                                    setDeletingId(null);
+                                  } catch (error) {
+                                    handleFirestoreError(error, OperationType.DELETE, `records/${h.id}`);
+                                  }
+                                }}
+                                className="px-4 py-2 bg-red-500 text-white text-[10px] font-bold rounded-xl hover:bg-red-600 transition-colors"
+                              >
+                                삭제확인
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingId(null);
+                                }}
+                                className="px-4 py-2 bg-zinc-200 text-zinc-600 text-[10px] font-bold rounded-xl hover:bg-zinc-300 transition-colors"
+                              >
+                                취소
+                              </button>
+                            </div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── 5. 보고서 발행 및 A4 인쇄 미리보기 모달 ── */}
+      <AnimatePresence>
+        {showPrintPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm print-hidden">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-[220mm] h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50">
+                <div>
+                  <h2 className="text-lg font-bold text-zinc-800">보고서 인쇄 미리보기 (A4 portrait)</h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">실제 프린트물은 결재란과 문서 규격 번호를 포함해 A4 최적화 인쇄됩니다.</p>
+                </div>
+                <button onClick={() => setShowPrintPreview(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 bg-zinc-100 flex justify-center">
+                <div className="bg-white shadow-lg p-6 border border-zinc-300 w-[210mm] min-h-[297mm]">
+                  <div className="text-black">
+                    <div className="flex justify-between items-start mb-6">
+                      <table className="border-collapse border border-black text-xs text-center w-[180px]">
+                        <tbody>
+                          <tr>
+                            <td rowSpan={3} className="border border-black font-bold px-2 py-4 w-[30px] bg-zinc-50">결재</td>
+                            <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">작성</td>
+                            <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">검토</td>
+                            <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">승인</td>
+                          </tr>
+                          <tr className="h-[45px]">
+                            <td className="border border-black py-1 text-[10px] text-zinc-400">{record.verifier || ''}</td>
+                            <td className="border border-black py-1"></td>
+                            <td className="border border-black py-1">{record.operator || ''}</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-black py-0.5 text-[8px]">/</td>
+                            <td className="border border-black py-0.5 text-[8px]">/</td>
+                            <td className="border border-black py-0.5 text-[8px]">/</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div className="text-right flex-1 pl-4 self-center">
+                        <h1 className="text-2xl font-extrabold border-b-2 border-black pb-2 inline-block">
+                          {record.fillingDate ? record.fillingDate.split('-')[0] : new Date().getFullYear()}년 {record.mainMode === '포장' ? '포장품 자주검사기록' : '충진품 자주검사기록'}
+                        </h1>
+                      </div>
+                    </div>
+                    <div className="text-xs text-zinc-500 mb-4">
+                      ※ 인쇄 영역 구성 요소들은 출력 시 A4 10행 규격에 맞추어 다음 페이지로 분할 출력됩니다.
+                    </div>
+                    <div className="border border-dashed border-zinc-300 p-8 rounded-2xl text-center text-sm font-medium text-zinc-600 bg-zinc-50">
+                      프린트 화면의 완성도 높은 출력을 위해 하단의 '인쇄하기' 버튼을 누르십시오.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-zinc-100 bg-zinc-50 flex justify-end gap-3">
+                <button 
+                  onClick={() => setShowPrintPreview(false)}
+                  className="px-6 py-3 bg-white border border-zinc-300 text-zinc-600 rounded-xl font-bold hover:bg-zinc-100 transition-all cursor-pointer"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowPrintPreview(false);
+                    setTimeout(() => {
+                      window.print();
+                    }, 250);
+                  }}
+                  className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2 cursor-pointer"
+                >
+                  <CheckCircle2 size={16} />
+                  인쇄하기 (Print)
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── 6. 인쇄 시에만 나타나는 프린트 템플릿 컴포넌트 ── */}
+      <PrintReportTemplate record={record} />
+
     </div>
   );
 }

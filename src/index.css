@@ -144,3 +144,58 @@ body {
   line-height: var(--lh-normal);
   transition: background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
 }
+
+/* ── 드래그 확대/축소 기능 관련 스타일 ── */
+.resizable-card {
+  resize: both;
+  overflow: auto;
+  min-width: 280px;
+  min-height: 180px;
+  position: relative;
+}
+
+/* 드래그 핸들이 더 명확히 보이도록 설정 */
+.resizable-card::-webkit-resizer {
+  background-image: linear-gradient(135deg, transparent 50%, var(--neutral-400) 50%);
+  background-size: 10px 10px;
+  background-repeat: no-repeat;
+  background-position: bottom right;
+  width: 12px;
+  height: 12px;
+  cursor: se-resize;
+}
+
+/* ── 인쇄 전용 스타일 ── */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* A4 용지 규격 맞춤 */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm 15mm 12mm;
+  }
+
+  /* 페이지 강제 줄바꿈 */
+  .page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+}
+
+/* 기본적으로 화면에서는 인쇄용 영역 숨김 */
+.print-only {
+  display: none;
+}
+
