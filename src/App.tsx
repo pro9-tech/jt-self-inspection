@@ -1083,19 +1083,10 @@ const MeasurementRow = ({
 function AppContent() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    return localStorage.getItem('theme') === 'dark';
-  });
-
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
+    document.documentElement.classList.remove('dark');
+    localStorage.removeItem('theme');
+  }, []);
 
   const [record, setRecord] = useState<FillingRecord>({
     id: Math.random().toString(36).substr(2, 9),
@@ -1704,25 +1695,6 @@ function AppContent() {
               보고서 발행
             </button>
 
-            {/* 다크모드 토글 스위치 */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 mt-2">
-              <span className="flex items-center gap-2">
-                {isDarkMode ? <Moon size={14} className="text-blue-500" /> : <Sun size={14} className="text-amber-500" />}
-                다크모드
-              </span>
-              <button 
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className={cn(
-                  "w-10 h-6 rounded-full relative transition-colors cursor-pointer focus:outline-none",
-                  isDarkMode ? "bg-blue-600" : "bg-zinc-300"
-                )}
-              >
-                <div className={cn(
-                  "w-4 h-4 bg-white rounded-full absolute top-1 left-1 transition-all",
-                  isDarkMode && "transform translate-x-4"
-                )} />
-              </button>
-            </div>
           </nav>
         </div>
 
