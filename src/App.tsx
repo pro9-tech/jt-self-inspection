@@ -489,6 +489,7 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
         <div key={pageIdx} className="page-break flex flex-col min-h-[297mm] justify-between pb-8" style={{ boxSizing: 'border-box' }}>
           <div>
             {/* 상단 결재란 및 타이틀 */}
+            <div className="flex justify-between items-start mb-6">
               {/* 제목 (왼쪽 배치 및 연도 동적 표시) */}
               <div className="text-left flex-1 pr-4 self-center">
                 <h1 className="text-2xl font-extrabold tracking-tight border-b-2 border-black pb-2 inline-block">
