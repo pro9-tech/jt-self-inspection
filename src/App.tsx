@@ -262,10 +262,10 @@ const WeightChart = ({
     ? (validWeights.reduce((a, b) => a + b, 0) / validWeights.length).toFixed(2)
     : '0.00';
 
-  // SVG 그래프 캔버스 사양 설정
-  const width = 500;
-  const height = 200;
-  const padding = 30;
+  // SVG 그래프 캔버스 사양 설정 (가로 폭을 대폭 넓혀 카드에 꽉 차게 구성)
+  const width = 1000;
+  const height = 220;
+  const padding = 40;
 
   const chartWidth = width - padding * 2;
   const chartHeight = height - padding * 2;
@@ -294,23 +294,6 @@ const WeightChart = ({
       </div>
       
       <div className="flex-1 min-h-[140px] relative">
-        {/* 툴팁 오버레이 */}
-        {hoveredPoint && (
-          <div 
-            className="absolute bg-zinc-900/95 dark:bg-zinc-800/95 text-white px-2.5 py-1.5 rounded-xl text-[10px] font-mono pointer-events-none shadow-lg z-10 -translate-x-1/2 -translate-y-full mb-2 flex flex-col items-center border border-zinc-700/50"
-            style={{ 
-              left: `${(hoveredPoint.x / width) * 100}%`, 
-              top: `${(hoveredPoint.y / height) * 100}%`,
-              marginTop: '-8px'
-            }}
-          >
-            <span className="text-[8px] text-zinc-400 font-sans">{hoveredPoint.time} 측정</span>
-            <span className="font-extrabold text-blue-300 dark:text-blue-200 mt-0.5">{hoveredPoint.value.toFixed(2)} g</span>
-            {/* 말풍선 아래 화살표 */}
-            <div className="w-1.5 h-1.5 bg-zinc-900/95 dark:bg-zinc-800/95 rotate-45 mt-1 -mb-1 border-r border-b border-zinc-700/50" />
-          </div>
-        )}
-
         {validMeasurements.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400 italic">
             측정된 중량 데이터가 존재하지 않습니다.
@@ -330,7 +313,7 @@ const WeightChart = ({
                   strokeWidth="1" 
                   strokeDasharray="4 4" 
                 />
-                <text x={width - padding + 5} y={getY(std + maxTolerance) + 3} fontSize="7" fill="var(--color-error)">
+                <text x={width - padding + 5} y={getY(std + maxTolerance) + 3} fontSize="8" fill="var(--color-error)">
                   +{maxTolerance}g
                 </text>
                 {/* 정석 중량선 */}
@@ -342,7 +325,7 @@ const WeightChart = ({
                   stroke="var(--color-success)" 
                   strokeWidth="1.5" 
                 />
-                <text x={width - padding + 5} y={getY(std) + 3} fontSize="7" fill="var(--color-success)">
+                <text x={width - padding + 5} y={getY(std) + 3} fontSize="8" fill="var(--color-success)">
                   {std}g
                 </text>
                 {/* 하한값 선 */}
@@ -355,7 +338,7 @@ const WeightChart = ({
                   strokeWidth="1" 
                   strokeDasharray="4 4" 
                 />
-                <text x={width - padding + 5} y={getY(std - minTolerance) + 3} fontSize="7" fill="var(--color-error)">
+                <text x={width - padding + 5} y={getY(std - minTolerance) + 3} fontSize="8" fill="var(--color-error)">
                   -{minTolerance}g
                 </text>
               </>
@@ -367,7 +350,7 @@ const WeightChart = ({
                 key={m.id} 
                 x={getX(idx)} 
                 y={height - 8} 
-                fontSize="8" 
+                fontSize="10" 
                 fill="#9DA5AF" 
                 textAnchor="middle"
               >
@@ -411,11 +394,11 @@ const WeightChart = ({
                         key={idx} 
                         cx={p.x} 
                         cy={p.y} 
-                        r="4.5" 
+                        r="6" 
                         fill="var(--color-accent)" 
                         stroke="#ffffff" 
-                        strokeWidth="1.5" 
-                        className="cursor-pointer transition-all hover:r-6"
+                        strokeWidth="2" 
+                        className="cursor-pointer transition-all hover:r-8"
                         onMouseEnter={() => {
                           setHoveredPoint({ x: p.x, y: p.y, value: avg, time: m.time });
                         }}
@@ -428,6 +411,47 @@ const WeightChart = ({
                 </>
               );
             })()}
+
+            {/* SVG 내부에 일치화된 반응형 툴팁 오버레이 */}
+            {hoveredPoint && (
+              <g pointerEvents="none">
+                {/* 툴팁 말풍선 배경 (그림자 효과 포함) */}
+                <rect 
+                  x={hoveredPoint.x - 55} 
+                  y={hoveredPoint.y - 45} 
+                  width="110" 
+                  height="34" 
+                  rx="8" 
+                  fill="#1F2328" 
+                  stroke="rgba(255,255,255,0.15)"
+                  strokeWidth="1"
+                />
+                <text 
+                  x={hoveredPoint.x} 
+                  y={hoveredPoint.y - 32} 
+                  fontSize="8" 
+                  fill="#9DA5AF" 
+                  textAnchor="middle"
+                >
+                  {hoveredPoint.time} 측정
+                </text>
+                <text 
+                  x={hoveredPoint.x} 
+                  y={hoveredPoint.y - 18} 
+                  fontSize="11" 
+                  fontWeight="bold" 
+                  fill="#ffffff" 
+                  textAnchor="middle"
+                >
+                  {hoveredPoint.value.toFixed(2)} g
+                </text>
+                {/* 툴팁 꼬리삼각형 */}
+                <polygon 
+                  points={`${hoveredPoint.x - 5},${hoveredPoint.y - 11} ${hoveredPoint.x + 5},${hoveredPoint.y - 11} ${hoveredPoint.x},${hoveredPoint.y - 6}`}
+                  fill="#1F2328"
+                />
+              </g>
+            )}
           </svg>
         )}
       </div>
@@ -1080,7 +1104,31 @@ const MeasurementRow = ({
   );
 };
 
+const useCardScale = (defaultWidth: number, defaultHeight: number) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [scale, setScale] = React.useState(1);
+
+  React.useEffect(() => {
+    if (!ref.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const { width } = entry.contentRect;
+        const scaleW = width / defaultWidth;
+        setScale(Math.max(0.85, Math.min(2.2, scaleW)));
+      }
+    });
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [defaultWidth, defaultHeight]);
+
+  return { ref, scale };
+};
+
 function AppContent() {
+  const infoCard = useCardScale(320, 350);
+  const tableCard = useCardScale(700, 350);
+  const graphCard = useCardScale(1000, 260);
+
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   useEffect(() => {
@@ -1540,23 +1588,7 @@ function AppContent() {
   };
 
   const [showPrintPreview, setShowPrintPreview] = useState(false);
-  const [printMainMode, setPrintMainMode] = useState<'충진' | '포장'>('충진');
-  const [printSubMode, setPrintSubMode] = useState<'충진1' | '충진2'>('충진1');
 
-  useEffect(() => {
-    if (showPrintPreview) {
-      setPrintMainMode(record.mainMode);
-      setPrintSubMode(record.subMode);
-    }
-  }, [showPrintPreview, record.mainMode, record.subMode]);
-
-  const tempRecord = useMemo(() => {
-    return {
-      ...record,
-      mainMode: printMainMode,
-      subMode: printSubMode
-    };
-  }, [record, printMainMode, printSubMode]);
 
   // 대시보드(홈) 화면으로 돌아가는 핸들러 함수
   const handleGoDashboard = () => {
@@ -1581,12 +1613,12 @@ function AppContent() {
           {/* 로고 영역 (현 위치 유지) */}
           <div className="flex items-center justify-center cursor-pointer select-none pb-4 border-b border-[var(--color-border)] dark:border-zinc-800 w-full" onClick={handleGoDashboard} title="대시보드로 이동">
             <img 
-              src="/brand/logo/logo-h.svg" 
+              src="/brand/logo/logo-h.svg?v=2" 
               alt="Zenitry Logo" 
               className="h-[26px] w-auto object-contain block dark:hidden" 
             />
             <img 
-              src="/brand/logo/logo-h-light.svg" 
+              src="/brand/logo/logo-h-light.svg?v=2" 
               alt="Zenitry Logo" 
               className="h-[26px] w-auto object-contain hidden dark:block" 
             />
@@ -1719,7 +1751,7 @@ function AppContent() {
         <div className="flex flex-wrap gap-6 items-start w-full">
           
           {/* 기본 정보 설정 및 가이드 (드래그 확대/축소 지원) */}
-          <div className="resizable-card bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-6 flex-none" style={{ minWidth: '280px', minHeight: '350px', width: '320px' }}>
+          <div ref={infoCard.ref} className="resizable-card bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-6 flex-none" style={{ minWidth: '280px', minHeight: '350px', width: '320px', fontSize: `${13 * infoCard.scale}px`, '--control-height': `${36 * infoCard.scale}px` } as React.CSSProperties}>
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">기본 정보 설정</h2>
@@ -1893,7 +1925,7 @@ function AppContent() {
           </div>
 
           {/* 계측 테이블 (드래그 확대/축소 지원) */}
-          <div className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col flex-none" style={{ minWidth: '350px', minHeight: '350px', width: '700px' }}>
+          <div ref={tableCard.ref} className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col flex-none" style={{ minWidth: '350px', minHeight: '350px', width: '700px', fontSize: `${12 * tableCard.scale}px`, '--control-height': `${36 * tableCard.scale}px` } as React.CSSProperties}>
             <div className="flex-1 overflow-auto">
               <table className={cn(
                 "w-full border-collapse text-left",
@@ -2122,7 +2154,7 @@ function AppContent() {
 
           {/* 측정항목 그래프 (충진1 모드일 때만 그래프와 종합 평균 표시) */}
           {record.mainMode === '충진' && record.subMode === '충진1' && (
-            <div className="resizable-card lg:col-span-3" style={{ minWidth: '350px', minHeight: '260px' }}>
+            <div ref={graphCard.ref} className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex-none mt-6" style={{ minWidth: '350px', minHeight: '260px', width: '100%', fontSize: `${13 * graphCard.scale}px` } as React.CSSProperties}>
               <WeightChart 
                 measurements={record.measurements} 
                 standardWeight={record.standardWeight} 
@@ -2623,53 +2655,8 @@ function AppContent() {
                 </button>
               </div>
 
-              {/* 보고서 인쇄 대상 분류 모드 선택 탭 */}
-              <div className="px-6 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2">
-                <button
-                  onClick={() => {
-                    setPrintMainMode('충진');
-                    setPrintSubMode('충진1');
-                  }}
-                  className={cn(
-                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                    printMainMode === '충진' && printSubMode === '충진1'
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
-                  )}
-                >
-                  충진1 (중량/캡)
-                </button>
-                <button
-                  onClick={() => {
-                    setPrintMainMode('충진');
-                    setPrintSubMode('충진2');
-                  }}
-                  className={cn(
-                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                    printMainMode === '충진' && printSubMode === '충진2'
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
-                  )}
-                >
-                  충진2 (스티커/날인)
-                </button>
-                <button
-                  onClick={() => {
-                    setPrintMainMode('포장');
-                  }}
-                  className={cn(
-                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                    printMainMode === '포장'
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
-                  )}
-                >
-                  포장 (종합)
-                </button>
-              </div>
-
               <div className="flex-1 overflow-y-auto p-8 bg-zinc-100 dark:bg-zinc-950 flex flex-col items-center gap-6">
-                <PrintReportTemplate record={tempRecord} isPreview={true} />
+                <PrintReportTemplate record={record} isPreview={true} />
               </div>
 
               <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-end gap-3">
@@ -2698,7 +2685,7 @@ function AppContent() {
       </AnimatePresence>
 
       {/* ── 6. 인쇄 시에만 나타나는 프린트 템플릿 컴포넌트 ── */}
-      <PrintReportTemplate record={tempRecord} />
+      <PrintReportTemplate record={record} />
 
     </div>
   );
