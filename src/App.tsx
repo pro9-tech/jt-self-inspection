@@ -484,9 +484,16 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
   };
 
   return (
-    <div className={cn(isPreview ? "w-full bg-white" : "print-only w-[210mm] mx-auto", "text-black p-4")}>
+    <div className={cn(isPreview ? "w-full flex flex-col gap-6 items-center" : "print-only w-[210mm] mx-auto", "text-black p-4")}>
       {pages.map((pageMeasurements, pageIdx) => (
-        <div key={pageIdx} className="page-break flex flex-col min-h-[297mm] justify-between pb-8" style={{ boxSizing: 'border-box' }}>
+        <div 
+          key={pageIdx} 
+          className={cn(
+            "page-break flex flex-col justify-between pb-8",
+            isPreview ? "w-[210mm] min-h-[297mm] bg-white shadow-xl p-8 border border-zinc-300 rounded-2xl" : "min-h-[297mm]"
+          )}
+          style={{ boxSizing: 'border-box' }}
+        >
           <div>
             {/* 상단 결재란 및 타이틀 */}
             <div className="flex justify-between items-start mb-6">
@@ -514,10 +521,10 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
                     <td className="border border-black py-1"></td>
                     <td className="border border-black py-1"></td>
                   </tr>
-                  <tr>
-                    <td className="border border-black py-0.5 text-[8px]"></td>
-                    <td className="border border-black py-0.5 text-[8px]"></td>
-                    <td className="border border-black py-0.5 text-[8px]"></td>
+                  <tr className="h-[20px]">
+                    <td className="border border-black text-[8px]"></td>
+                    <td className="border border-black text-[8px]"></td>
+                    <td className="border border-black text-[8px]"></td>
                   </tr>
                 </tbody>
               </table>
@@ -835,11 +842,11 @@ const MeasurementRow = ({
   }, [measurement.vials]);
 
   const getStatusColor = (value: number | null) => {
-    if (value === null || !standardWeight || underweightTolerance === null || overweightTolerance === null) return 'text-zinc-900 font-bold';
+    if (value === null || !standardWeight || underweightTolerance === null || overweightTolerance === null) return 'text-zinc-900 dark:text-zinc-100 font-bold';
     const diff = value - standardWeight;
     if (diff < -underweightTolerance) return 'text-red-600 font-black'; // Extra bold for failures
     if (diff > overweightTolerance) return 'text-blue-600 font-black'; // Extra bold for failures
-    return 'text-zinc-900 font-bold';
+    return 'text-zinc-900 dark:text-zinc-100 font-bold';
   };
 
   const handleVialChange = (index: number, value: number | null) => {
@@ -860,16 +867,16 @@ const MeasurementRow = ({
 
   return (
     <>
-      <tr className="border-b border-zinc-200 hover:bg-zinc-50 transition-colors group">
+      <tr className="border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
         <td className="p-3 text-center w-20 min-w-[80px]">
           <button 
             onClick={toggleExpand}
             className="flex flex-col items-center justify-center w-full group"
           >
-            <span className="font-mono text-sm text-zinc-500">{measurement.time}</span>
+            <span className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{measurement.time}</span>
             <div className={cn(
-              "mt-1 p-0.5 rounded-md bg-zinc-100 text-zinc-400 group-hover:bg-zinc-200 group-hover:text-zinc-600 transition-all",
-              measurement.isExpanded && "bg-zinc-800 text-white group-hover:bg-zinc-700"
+              "mt-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-all",
+              measurement.isExpanded && "bg-zinc-800 dark:bg-zinc-700 text-white dark:text-zinc-100 group-hover:bg-zinc-700 dark:group-hover:bg-zinc-600"
             )}>
               {measurement.isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             </div>
@@ -879,7 +886,7 @@ const MeasurementRow = ({
         {mainMode === '충진' && subMode === '충진1' && (
           <>
             {[0, 1, 2].map((i) => (
-              <td key={`w-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300")}>
+              <td key={`w-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <NumberInputWithButtons
                   value={measurement.vials[i]}
                   onChange={(val) => handleVialChange(i, val)}
@@ -890,7 +897,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`c-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300", i === 2 && "border-r-2 border-zinc-300")}>
+              <td key={`c-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
                 <StatusToggle 
                   value={measurement.capStatus[i]} 
                   onChange={(val) => handleStatusChange('capStatus', i, val)} 
@@ -911,7 +918,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`p-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300", i === 2 && "border-r-2 border-zinc-300")}>
+              <td key={`p-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
                 <StatusToggle 
                   value={measurement.printingStatus[i]} 
                   onChange={(val) => handleStatusChange('printingStatus', i, val)} 
@@ -924,7 +931,7 @@ const MeasurementRow = ({
         {mainMode === '포장' && (
           <>
             {[0, 1, 2].map((i) => (
-              <td key={`p-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300")}>
+              <td key={`p-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <StatusToggle 
                   value={measurement.printingStatus[i]} 
                   onChange={(val) => handleStatusChange('printingStatus', i, val)} 
@@ -932,7 +939,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`c-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300")}>
+              <td key={`c-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <StatusToggle 
                   value={measurement.capStatus[i]} 
                   onChange={(val) => handleStatusChange('capStatus', i, val)} 
@@ -940,7 +947,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`s-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300")}>
+              <td key={`s-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <StatusToggle 
                   value={measurement.stickerStatus[i]} 
                   onChange={(val) => handleStatusChange('stickerStatus', i, val)} 
@@ -948,7 +955,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`sc-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300")}>
+              <td key={`sc-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <StatusToggle 
                   value={measurement.scratchStatus[i]} 
                   onChange={(val) => handleStatusChange('scratchStatus', i, val)} 
@@ -956,7 +963,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`f-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300", i === 2 && "border-r-2 border-zinc-300")}>
+              <td key={`f-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
                 <StatusToggle 
                   value={measurement.foreignStatus[i]} 
                   onChange={(val) => handleStatusChange('foreignStatus', i, val)} 
@@ -1737,15 +1744,15 @@ function AppContent() {
         </header>
 
         {/* 대시보드 레이아웃 (확대/축소 카드로 래핑) */}
-        <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
+        <div className="flex flex-wrap gap-6 items-start w-full">
           
           {/* 기본 정보 설정 및 가이드 (드래그 확대/축소 지원) */}
-          <div className="resizable-card bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-6 flex-1 lg:max-w-[320px]" style={{ minWidth: '280px', minHeight: '350px' }}>
+          <div className="resizable-card bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-6 flex-none" style={{ minWidth: '280px', minHeight: '350px', width: '320px' }}>
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">기본 정보 설정</h2>
                 {record.mainMode === '충진' && (
-                  <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
+                  <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
                     {(['충진1', '충진2'] as const).map((sm) => (
                       <button
                         key={sm}
@@ -1753,8 +1760,8 @@ function AppContent() {
                         className={cn(
                           "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
                           record.subMode === sm 
-                            ? "bg-white text-zinc-800 shadow-sm" 
-                            : "text-zinc-400 hover:text-zinc-600"
+                            ? "bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 shadow-sm" 
+                            : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400"
                         )}
                       >
                         {sm}
@@ -1785,7 +1792,7 @@ function AppContent() {
                         setRecord({ ...record, itemName: e.target.value });
                       }
                     }}
-                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                   >
                     <option value="">품목 선택...</option>
                     {settings.items.map((item, idx) => (
@@ -1805,7 +1812,7 @@ function AppContent() {
                     type="text"
                     value={record.lotNumber}
                     onChange={(e) => setRecord({ ...record, lotNumber: e.target.value })}
-                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                     placeholder="예: LOT20240326"
                   />
                 </div>
@@ -1818,7 +1825,7 @@ function AppContent() {
                     type="date"
                     value={record.fillingDate}
                     onChange={(e) => setRecord({ ...record, fillingDate: e.target.value })}
-                    className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                   />
                 </div>
 
@@ -1873,7 +1880,7 @@ function AppContent() {
                     <select
                       value={record.verifier}
                       onChange={(e) => setRecord({ ...record, verifier: e.target.value })}
-                      className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                     >
                       <option value="">선택...</option>
                       {(settings.verifiers || []).map((ver, i) => (
@@ -1888,7 +1895,7 @@ function AppContent() {
                     <select
                       value={record.operator}
                       onChange={(e) => setRecord({ ...record, operator: e.target.value })}
-                      className="w-full bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 p-2"
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                     >
                       <option value="">선택...</option>
                       {(settings.operators || []).map((op, i) => (
@@ -1914,38 +1921,38 @@ function AppContent() {
           </div>
 
           {/* 계측 테이블 (드래그 확대/축소 지원) */}
-          <div className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col flex-[2] w-full" style={{ minWidth: '350px', minHeight: '350px' }}>
+          <div className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col flex-none" style={{ minWidth: '350px', minHeight: '350px', width: '700px' }}>
             <div className="flex-1 overflow-auto">
               <table className={cn(
                 "w-full border-collapse text-left",
                 record.mainMode === '포장' ? "min-w-[1200px]" : "min-w-[650px]"
               )}>
                 <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-200 text-xs font-bold text-zinc-500">
+                  <tr className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-500 dark:text-zinc-400">
                     <th className="p-3 text-center w-20">시간</th>
                     {record.mainMode === '충진' && record.subMode === '충진1' && (
                       <>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">중량 (g)</th>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">캡 상태</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">중량 (g)</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">캡 상태</th>
                       </>
                     )}
                     {record.mainMode === '충진' && record.subMode === '충진2' && (
                       <>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">스티커 상태</th>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">날인 상태</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">스티커 상태</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">날인 상태</th>
                       </>
                     )}
                     {record.mainMode === '포장' && (
                       <>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">날인</th>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">캡</th>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">스티커</th>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">스크래치</th>
-                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200">이물</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">날인</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">캡</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">스티커</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">스크래치</th>
+                        <th colSpan={3} className="p-3 text-center border-l-2 border-zinc-200 dark:border-l-zinc-700">이물</th>
                       </>
                     )}
                   </tr>
-                  <tr className="bg-zinc-50/50 border-b border-zinc-100 text-[10px] text-zinc-400">
+                  <tr className="bg-zinc-50/50 dark:bg-zinc-800/50 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400 dark:text-zinc-500">
                     <th className="p-2 text-center">Time</th>
                     {record.mainMode === '충진' && record.subMode === '충진1' && (
                       <>
@@ -2010,7 +2017,7 @@ function AppContent() {
             </div>
 
             {/* 시간대 조절판 */}
-            <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex flex-wrap justify-center gap-6">
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex flex-wrap justify-center gap-6">
               <div className="flex gap-4 items-center">
                 <button 
                   onClick={() => {
@@ -2043,7 +2050,7 @@ function AppContent() {
                       ]
                     });
                   }}
-                  className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
                 >
                   <Plus size={12} /> 윗 시간대 추가
                 </button>
@@ -2056,7 +2063,7 @@ function AppContent() {
                     <Trash2 size={12} /> 윗 시간대 삭제
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg p-1 shadow-sm text-[10px]">
+                  <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900 rounded-lg p-1 shadow-sm text-[10px]">
                     <button 
                       onClick={() => {
                         if (record.measurements.length > 1) {
@@ -2107,7 +2114,7 @@ function AppContent() {
                       ]
                     });
                   }}
-                  className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
                 >
                   <Plus size={12} /> 아랫 시간대 추가
                 </button>
@@ -2120,7 +2127,7 @@ function AppContent() {
                     <Trash2 size={12} /> 아랫 시간대 삭제
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg p-1 shadow-sm text-[10px]">
+                  <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900 rounded-lg p-1 shadow-sm text-[10px]">
                     <button 
                       onClick={() => {
                         if (record.measurements.length > 1) {
@@ -2132,7 +2139,7 @@ function AppContent() {
                     >
                       확인
                     </button>
-                    <button onClick={() => setIsDeletingBottomRow(false)} className="px-2 py-0.5 bg-zinc-100 rounded text-zinc-600 font-bold">
+                    <button onClick={() => setIsDeletingBottomRow(false)} className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-700 rounded text-zinc-600 dark:text-zinc-300 font-bold">
                       취소
                     </button>
                   </div>
@@ -2689,10 +2696,8 @@ function AppContent() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 bg-zinc-100 dark:bg-zinc-950 flex justify-center">
-                <div className="bg-white shadow-lg p-6 border border-zinc-300 w-[210mm] min-h-[297mm]">
-                  <PrintReportTemplate record={tempRecord} isPreview={true} />
-                </div>
+              <div className="flex-1 overflow-y-auto p-8 bg-zinc-100 dark:bg-zinc-950 flex flex-col items-center gap-6">
+                <PrintReportTemplate record={tempRecord} isPreview={true} />
               </div>
 
               <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-end gap-3">
