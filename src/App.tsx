@@ -22,7 +22,9 @@ import {
   X,
   Edit2,
   Link,
-  Layers
+  Layers,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -251,7 +253,9 @@ const WeightChart = ({
   standardWeight: number | null; 
   underweightTolerance: number | null; 
   overweightTolerance: number | null; 
-}) => {
+  }) => {
+  const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; value: number; time: string } | null>(null);
+
   // 전체 평균값 계산
   const validWeights = measurements.flatMap(m => m.vials.filter((v): v is number => v !== null));
   const average = validWeights.length > 0 
@@ -281,15 +285,32 @@ const WeightChart = ({
   const getY = (val: number) => height - padding - ((val - minVal) / yRange) * chartHeight;
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm flex flex-col h-full select-none">
+    <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col h-full select-none">
       <div className="flex justify-between items-center mb-4">
         <div>
           <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 측정 트렌드 및 평균</h3>
-          <p className="text-lg font-bold text-zinc-800 mt-1">종합 평균: <span className="text-blue-600 font-extrabold">{average} g</span></p>
+          <p className="text-lg font-bold text-zinc-800 dark:text-zinc-100 mt-1">종합 평균: <span className="text-blue-600 dark:text-blue-400 font-extrabold">{average} g</span></p>
         </div>
       </div>
       
       <div className="flex-1 min-h-[140px] relative">
+        {/* 툴팁 오버레이 */}
+        {hoveredPoint && (
+          <div 
+            className="absolute bg-zinc-900/95 dark:bg-zinc-800/95 text-white px-2.5 py-1.5 rounded-xl text-[10px] font-mono pointer-events-none shadow-lg z-10 -translate-x-1/2 -translate-y-full mb-2 flex flex-col items-center border border-zinc-700/50"
+            style={{ 
+              left: `${(hoveredPoint.x / width) * 100}%`, 
+              top: `${(hoveredPoint.y / height) * 100}%`,
+              marginTop: '-8px'
+            }}
+          >
+            <span className="text-[8px] text-zinc-400 font-sans">{hoveredPoint.time} 측정</span>
+            <span className="font-extrabold text-blue-300 dark:text-blue-200 mt-0.5">{hoveredPoint.value.toFixed(2)} g</span>
+            {/* 말풍선 아래 화살표 */}
+            <div className="w-1.5 h-1.5 bg-zinc-900/95 dark:bg-zinc-800/95 rotate-45 mt-1 -mb-1 border-r border-b border-zinc-700/50" />
+          </div>
+        )}
+
         {validMeasurements.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400 italic">
             측정된 중량 데이터가 존재하지 않습니다.
@@ -380,17 +401,30 @@ const WeightChart = ({
                       strokeLinejoin="round" 
                     />
                   )}
-                  {points.map((p, idx) => p && (
-                    <circle 
-                      key={idx} 
-                      cx={p.x} 
-                      cy={p.y} 
-                      r="4" 
-                      fill="var(--color-accent)" 
-                      stroke="#ffffff" 
-                      strokeWidth="1.5" 
-                    />
-                  ))}
+                  {points.map((p, idx) => {
+                    if (!p) return null;
+                    const m = measurements[idx];
+                    const vals = m.vials.filter((v): v is number => v !== null);
+                    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                    return (
+                      <circle 
+                        key={idx} 
+                        cx={p.x} 
+                        cy={p.y} 
+                        r="4.5" 
+                        fill="var(--color-accent)" 
+                        stroke="#ffffff" 
+                        strokeWidth="1.5" 
+                        className="cursor-pointer transition-all hover:r-6"
+                        onMouseEnter={() => {
+                          setHoveredPoint({ x: p.x, y: p.y, value: avg, time: m.time });
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredPoint(null);
+                        }}
+                      />
+                    );
+                  })}
                 </>
               );
             })()}
@@ -402,7 +436,7 @@ const WeightChart = ({
 };
 
 // A4 출력 전용 레포트 템플릿 컴포넌트
-const PrintReportTemplate = ({ record }: { record: FillingRecord }) => {
+const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRecord; isPreview?: boolean }) => {
   const year = record.fillingDate ? record.fillingDate.split('-')[0] : new Date().getFullYear();
   const classificationTitle = record.mainMode === '포장' ? '포장품 자주검사기록' : '충진품 자주검사기록';
   const reportTitle = `${year}년 ${classificationTitle}`;
@@ -450,13 +484,22 @@ const PrintReportTemplate = ({ record }: { record: FillingRecord }) => {
   };
 
   return (
-    <div className="print-only w-[210mm] mx-auto text-black p-4">
+    <div className={cn(isPreview ? "w-full bg-white" : "print-only w-[210mm] mx-auto", "text-black p-4")}>
       {pages.map((pageMeasurements, pageIdx) => (
         <div key={pageIdx} className="page-break flex flex-col min-h-[297mm] justify-between pb-8" style={{ boxSizing: 'border-box' }}>
           <div>
             {/* 상단 결재란 및 타이틀 */}
-            <div className="flex justify-between items-start mb-6">
-              {/* 결재란 (왼쪽 상단 배치) */}
+              {/* 제목 (왼쪽 배치 및 연도 동적 표시) */}
+              <div className="text-left flex-1 pr-4 self-center">
+                <h1 className="text-2xl font-extrabold tracking-tight border-b-2 border-black pb-2 inline-block">
+                  {reportTitle}
+                </h1>
+                <div className="text-xs text-zinc-600 mt-1 font-mono">
+                  인쇄일자: {format(new Date(), 'yyyy-MM-dd HH:mm')} | 페이지: {pageIdx + 1} / {pages.length}
+                </div>
+              </div>
+
+              {/* 결재란 (오른쪽 배치) */}
               <table className="border-collapse border border-black text-xs text-center w-[180px]">
                 <tbody>
                   <tr>
@@ -466,41 +509,17 @@ const PrintReportTemplate = ({ record }: { record: FillingRecord }) => {
                     <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">승인</td>
                   </tr>
                   <tr className="h-[45px]">
-                    <td className="border border-black py-1 text-[10px] text-zinc-400">
-                      {record.verifier ? (
-                        <div className="flex flex-col items-center">
-                          <span>{record.verifier}</span>
-                          <span className="text-[8px]">(서명)</span>
-                        </div>
-                      ) : ''}
-                    </td>
                     <td className="border border-black py-1"></td>
-                    <td className="border border-black py-1">
-                      {record.operator ? (
-                        <div className="flex flex-col items-center">
-                          <span>{record.operator}</span>
-                          <span className="text-[8px]">(서명)</span>
-                        </div>
-                      ) : ''}
-                    </td>
+                    <td className="border border-black py-1"></td>
+                    <td className="border border-black py-1"></td>
                   </tr>
                   <tr>
-                    <td className="border border-black py-0.5 text-[8px]">/</td>
-                    <td className="border border-black py-0.5 text-[8px]">/</td>
-                    <td className="border border-black py-0.5 text-[8px]">/</td>
+                    <td className="border border-black py-0.5 text-[8px]"></td>
+                    <td className="border border-black py-0.5 text-[8px]"></td>
+                    <td className="border border-black py-0.5 text-[8px]"></td>
                   </tr>
                 </tbody>
               </table>
-
-              {/* 제목 (오른쪽 배치 및 연도 동적 표시) */}
-              <div className="text-right flex-1 pl-4 self-center">
-                <h1 className="text-2xl font-extrabold tracking-tight border-b-2 border-black pb-2 inline-block">
-                  {reportTitle}
-                </h1>
-                <div className="text-xs text-zinc-600 mt-1 font-mono">
-                  인쇄일자: {format(new Date(), 'yyyy-MM-dd HH:mm')} | 페이지: {pageIdx + 1} / {pages.length}
-                </div>
-              </div>
             </div>
 
             {/* 기본 품목 정보 표 */}
@@ -656,10 +675,10 @@ const PrintReportTemplate = ({ record }: { record: FillingRecord }) => {
             </table>
           </div>
 
-          {/* 하단 푸터 (오른쪽 하단에 문서번호 지정) */}
+          {/* 하단 푸터 (오른쪽 하단에 회사명 지정) */}
           <div className="flex justify-between items-center text-xs font-medium border-t border-black pt-2 mt-4 font-mono">
+            <span className="font-extrabold">[JTQF-3440-05]</span>
             <span>(주)제니트리</span>
-            <span className="font-extrabold">[JTQF-3440-05] (Rev.0)</span>
           </div>
         </div>
       ))}
@@ -1056,6 +1075,20 @@ const MeasurementRow = ({
 function AppContent() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
   const [record, setRecord] = useState<FillingRecord>({
     id: Math.random().toString(36).substr(2, 9),
     mainMode: '충진',
@@ -1508,6 +1541,23 @@ function AppContent() {
   };
 
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [printMainMode, setPrintMainMode] = useState<'충진' | '포장'>('충진');
+  const [printSubMode, setPrintSubMode] = useState<'충진1' | '충진2'>('충진1');
+
+  useEffect(() => {
+    if (showPrintPreview) {
+      setPrintMainMode(record.mainMode);
+      setPrintSubMode(record.subMode);
+    }
+  }, [showPrintPreview, record.mainMode, record.subMode]);
+
+  const tempRecord = useMemo(() => {
+    return {
+      ...record,
+      mainMode: printMainMode,
+      subMode: printSubMode
+    };
+  }, [record, printMainMode, printSubMode]);
 
   // 대시보드(홈) 화면으로 돌아가는 핸들러 함수
   const handleGoDashboard = () => {
@@ -1527,10 +1577,10 @@ function AppContent() {
     <div className="min-h-screen flex bg-[var(--color-bg-layout)] text-[var(--color-text)] font-sans">
       
       {/* ── 1. 왼쪽 세로형 사이드바 (인쇄 시 숨김) ── */}
-      <aside className="w-64 bg-white border-r border-[var(--color-border)] p-6 flex flex-col gap-6 shrink-0 print-hidden justify-between">
+      <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-[var(--color-border)] dark:border-zinc-800 p-6 flex flex-col gap-6 shrink-0 print-hidden justify-between">
         <div className="space-y-6">
           {/* 로고 영역 (현 위치 유지) */}
-          <div className="flex items-center cursor-pointer select-none pb-4 border-b border-[var(--color-border)]" onClick={handleGoDashboard} title="대시보드로 이동">
+          <div className="flex items-center justify-center cursor-pointer select-none pb-4 border-b border-[var(--color-border)] dark:border-zinc-800 w-full" onClick={handleGoDashboard} title="대시보드로 이동">
             <img 
               src="/brand/logo/logo-h.svg" 
               alt="Zenitry Logo" 
@@ -1645,6 +1695,26 @@ function AppContent() {
               <CheckCircle2 size={14} />
               보고서 발행
             </button>
+
+            {/* 다크모드 토글 스위치 */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 mt-2">
+              <span className="flex items-center gap-2">
+                {isDarkMode ? <Moon size={14} className="text-blue-500" /> : <Sun size={14} className="text-amber-500" />}
+                다크모드
+              </span>
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={cn(
+                  "w-10 h-6 rounded-full relative transition-colors cursor-pointer focus:outline-none",
+                  isDarkMode ? "bg-blue-600" : "bg-zinc-300"
+                )}
+              >
+                <div className={cn(
+                  "w-4 h-4 bg-white rounded-full absolute top-1 left-1 transition-all",
+                  isDarkMode && "transform translate-x-4"
+                )} />
+              </button>
+            </div>
           </nav>
         </div>
 
@@ -1666,10 +1736,10 @@ function AppContent() {
         </header>
 
         {/* 대시보드 레이아웃 (확대/축소 카드로 래핑) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
           
           {/* 기본 정보 설정 및 가이드 (드래그 확대/축소 지원) */}
-          <div className="resizable-card bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm space-y-6" style={{ minWidth: '280px', minHeight: '350px' }}>
+          <div className="resizable-card bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-6 flex-1 lg:max-w-[320px]" style={{ minWidth: '280px', minHeight: '350px' }}>
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">기본 정보 설정</h2>
@@ -1843,7 +1913,7 @@ function AppContent() {
           </div>
 
           {/* 계측 테이블 (드래그 확대/축소 지원) */}
-          <div className="resizable-card lg:col-span-2 bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col" style={{ minWidth: '350px', minHeight: '350px' }}>
+          <div className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col flex-[2] w-full" style={{ minWidth: '350px', minHeight: '350px' }}>
             <div className="flex-1 overflow-auto">
               <table className={cn(
                 "w-full border-collapse text-left",
@@ -2561,62 +2631,73 @@ function AppContent() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-[220mm] h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col"
+              className="bg-white dark:bg-zinc-900 w-[220mm] h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col"
             >
-              <div className="p-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50">
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900">
                 <div>
-                  <h2 className="text-lg font-bold text-zinc-800">보고서 인쇄 미리보기 (A4 portrait)</h2>
+                  <h2 className="text-lg font-bold text-zinc-800 dark:text-zinc-100">보고서 인쇄 미리보기 (A4 portrait)</h2>
                   <p className="text-xs text-zinc-400 mt-0.5">실제 프린트물은 결재란과 문서 규격 번호를 포함해 A4 최적화 인쇄됩니다.</p>
                 </div>
-                <button onClick={() => setShowPrintPreview(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors cursor-pointer">
+                <button onClick={() => setShowPrintPreview(false)} className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-full transition-colors cursor-pointer text-zinc-500">
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 bg-zinc-100 flex justify-center">
+              {/* 보고서 인쇄 대상 분류 모드 선택 탭 */}
+              <div className="px-6 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-2">
+                <button
+                  onClick={() => {
+                    setPrintMainMode('충진');
+                    setPrintSubMode('충진1');
+                  }}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    printMainMode === '충진' && printSubMode === '충진1'
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
+                  )}
+                >
+                  충진1 (중량/캡)
+                </button>
+                <button
+                  onClick={() => {
+                    setPrintMainMode('충진');
+                    setPrintSubMode('충진2');
+                  }}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    printMainMode === '충진' && printSubMode === '충진2'
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
+                  )}
+                >
+                  충진2 (스티커/날인)
+                </button>
+                <button
+                  onClick={() => {
+                    setPrintMainMode('포장');
+                  }}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    printMainMode === '포장'
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
+                  )}
+                >
+                  포장 (종합)
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 bg-zinc-100 dark:bg-zinc-950 flex justify-center">
                 <div className="bg-white shadow-lg p-6 border border-zinc-300 w-[210mm] min-h-[297mm]">
-                  <div className="text-black">
-                    <div className="flex justify-between items-start mb-6">
-                      <table className="border-collapse border border-black text-xs text-center w-[180px]">
-                        <tbody>
-                          <tr>
-                            <td rowSpan={3} className="border border-black font-bold px-2 py-4 w-[30px] bg-zinc-50">결재</td>
-                            <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">작성</td>
-                            <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">검토</td>
-                            <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">승인</td>
-                          </tr>
-                          <tr className="h-[45px]">
-                            <td className="border border-black py-1 text-[10px] text-zinc-400">{record.verifier || ''}</td>
-                            <td className="border border-black py-1"></td>
-                            <td className="border border-black py-1">{record.operator || ''}</td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black py-0.5 text-[8px]">/</td>
-                            <td className="border border-black py-0.5 text-[8px]">/</td>
-                            <td className="border border-black py-0.5 text-[8px]">/</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <div className="text-right flex-1 pl-4 self-center">
-                        <h1 className="text-2xl font-extrabold border-b-2 border-black pb-2 inline-block">
-                          {record.fillingDate ? record.fillingDate.split('-')[0] : new Date().getFullYear()}년 {record.mainMode === '포장' ? '포장품 자주검사기록' : '충진품 자주검사기록'}
-                        </h1>
-                      </div>
-                    </div>
-                    <div className="text-xs text-zinc-500 mb-4">
-                      ※ 인쇄 영역 구성 요소들은 출력 시 A4 10행 규격에 맞추어 다음 페이지로 분할 출력됩니다.
-                    </div>
-                    <div className="border border-dashed border-zinc-300 p-8 rounded-2xl text-center text-sm font-medium text-zinc-600 bg-zinc-50">
-                      프린트 화면의 완성도 높은 출력을 위해 하단의 '인쇄하기' 버튼을 누르십시오.
-                    </div>
-                  </div>
+                  <PrintReportTemplate record={tempRecord} isPreview={true} />
                 </div>
               </div>
 
-              <div className="p-6 border-t border-zinc-100 bg-zinc-50 flex justify-end gap-3">
+              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-end gap-3">
                 <button 
                   onClick={() => setShowPrintPreview(false)}
-                  className="px-6 py-3 bg-white border border-zinc-300 text-zinc-600 rounded-xl font-bold hover:bg-zinc-100 transition-all cursor-pointer"
+                  className="px-6 py-3 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl font-bold hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all cursor-pointer"
                 >
                   취소
                 </button>
@@ -2639,7 +2720,7 @@ function AppContent() {
       </AnimatePresence>
 
       {/* ── 6. 인쇄 시에만 나타나는 프린트 템플릿 컴포넌트 ── */}
-      <PrintReportTemplate record={record} />
+      <PrintReportTemplate record={tempRecord} />
 
     </div>
   );

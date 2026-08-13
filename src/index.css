@@ -2,7 +2,7 @@
 
 :root {
   /* ── 색 씨앗 ── */
-  --seed-color-primary: #1F2328;   /* 회사 대표색 = 로고색 = Neutral Charcoal */
+  --seed-color-primary: #0000CD;   /* 회사 대표색 = 로고색 = Neutral Charcoal */
   --seed-color-neutral: #1F2328;   /* 뉴트럴 스케일의 기준 */
   --seed-color-accent:  #305CDE;   /* 상호작용 강조 = blue-500 */
   --seed-color-success:  #14A870;  /* 성공·승인·정상 = green-500 */
@@ -23,9 +23,9 @@
   --color-primary-bg:     #EEF0F2;  /* = neutral-100 */
   --color-primary-border:  #DEE2E6;  /* = neutral-200 */
   --color-primary-hover:   #2E343B;  /* = neutral-800 */
-  --color-primary:         #1F2328;  /* = neutral-900 = 로고색 */
+  --color-primary:         #0000CD;  /* = neutral-900 = 로고색 */
   --color-primary-active:  #14171A;  /* = neutral-950 */
-  --color-primary-text:    #1F2328;  /* = neutral-900 */
+  --color-primary-text:    #0000CD;  /* = neutral-900 */
 
   --color-accent-bg:     #EEF3FE;  /* = blue-50 */
   --color-accent-border:  #D6E1FC;  /* = blue-100 */
@@ -118,7 +118,7 @@
   --control-height-lg:   44px;
 }
 
-[data-theme="dark"] {
+[data-theme="dark"], .dark {
   --color-text:           rgba(255,255,255,.88);
   --color-text-secondary: rgba(255,255,255,.55);
   --color-text-tertiary:  rgba(255,255,255,.38);
