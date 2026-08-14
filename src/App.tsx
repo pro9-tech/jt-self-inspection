@@ -465,8 +465,8 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
   const classificationTitle = record.mainMode === '포장' ? '포장품 자주검사기록' : '충진품 자주검사기록';
   const reportTitle = `${year}년 ${classificationTitle}`;
 
-  // A4 한 장당 들어갈 최대 데이터 개수 (10개씩 분할)
-  const ROWS_PER_PAGE = 10;
+  // A4 한 장당 들어갈 최대 데이터 개수 (포장 모드는 5개 검사항목이므로 5개 단위, 충진 모드는 10개 단위 분할)
+  const ROWS_PER_PAGE = record.mainMode === '포장' ? 5 : 10;
   const totalMeasurements = record.measurements;
   
   const pages: Measurement[][] = [];
