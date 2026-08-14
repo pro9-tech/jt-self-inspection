@@ -508,17 +508,14 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
   };
 
   return (
-    <div className={cn(isPreview ? "w-full flex flex-col gap-6 items-center" : "print-only w-[210mm] mx-auto", "text-black p-4")}>
+    <div className={cn(isPreview ? "w-full flex flex-col gap-6 items-center py-8" : "print-only", "text-black")}>
       {pages.map((pageMeasurements, pageIdx) => (
         <div 
           key={pageIdx} 
           className={cn(
-            "page-break flex flex-col justify-between relative",
-            isPreview 
-              ? "w-[210mm] min-h-[297mm] bg-white shadow-xl p-8 pb-20 border border-zinc-300 rounded-2xl" 
-              : "print-page"
+            "page-break",
+            isPreview && "shadow-xl border border-zinc-300 rounded-2xl"
           )}
-          style={{ boxSizing: 'border-box' }}
         >
           <div>
             {/* 상단 결재란 및 타이틀 */}
@@ -716,11 +713,7 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
 
           {/* 하단 푸터 (각 페이지 하단에 absolute로 고정) */}
           <div 
-            className={cn(
-              "flex justify-between items-center text-xs font-medium border-t border-black pt-2 font-mono w-full",
-              isPreview ? "absolute bottom-8 left-8 right-8" : "absolute bottom-0 left-0 right-0"
-            )}
-            style={{ width: isPreview ? 'calc(100% - 64px)' : '100%' }}
+            className="absolute bottom-[12mm] left-[15mm] right-[15mm] flex justify-between items-center text-xs font-medium border-t border-black pt-2 font-mono"
           >
             <span className="font-extrabold">[JTQF-3440-05]</span>
             <span>(주)제니트리</span>

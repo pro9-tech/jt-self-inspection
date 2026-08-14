@@ -147,12 +147,27 @@ body {
   cursor: se-resize;
 }
 
-/* ── 인쇄 전용 스타일 ── */
+/* ── 인쇄 전용 스타일 및 미리보기 통일 ── */
+.page-break {
+  width: 210mm;
+  height: 297mm;
+  box-sizing: border-box;
+  position: relative;
+  background-color: #ffffff;
+  padding: 15mm 15mm 22mm 15mm; /* 상하좌우 여백을 패딩으로 지정 */
+  margin: 0 auto;
+  page-break-after: always;
+  break-after: page;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
 @media print {
   body {
     background-color: #ffffff !important;
     color: #000000 !important;
-    font-size: 11pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .print-hidden {
@@ -166,21 +181,15 @@ body {
   /* A4 용지 규격 맞춤 */
   @page {
     size: A4 portrait;
-    margin: 15mm 12mm 15mm 12mm;
+    margin: 0 !important; /* 브라우저 마진 제거하여 미리보기와 1:1 매칭 */
   }
 
-  /* 페이지 강제 줄바꿈 및 크기/배치 제어 */
+  /* 인쇄 시 여백 및 스타일 초기화 */
   .page-break {
-    page-break-after: always;
-    break-after: page;
-  }
-
-  /* 인쇄 시 각 페이지 영역 정확한 높이 및 위치 제어 */
-  .print-page {
-    height: 262mm !important; /* A4 297mm - 상하여백 30mm - 안전마진 */
-    position: relative !important;
-    box-sizing: border-box !important;
-    padding-bottom: 35px !important; /* 푸터와 테이블 겹침 방지 */
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
   }
 
   /* 두 번째 페이지부터 테이블 헤더(thead) 반복 방지 */
