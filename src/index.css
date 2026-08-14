@@ -1,6 +1,14 @@
+@import "../.claude/skills/janytree-design/tokens/fonts.css";
+@import "../.claude/skills/janytree-design/tokens/colors.css";
+@import "../.claude/skills/janytree-design/tokens/typography.css";
+@import "../.claude/skills/janytree-design/tokens/spacing.css";
+@import "../.claude/skills/janytree-design/tokens/elevation.css";
+@import "../.claude/skills/janytree-design/tokens/motion.css";
+@import "../.claude/skills/janytree-design/tokens/keyframes.css";
+@import "../.claude/skills/janytree-design/tokens/layout.css";
+@import "../.claude/skills/janytree-design/tokens/semantic.css";
+@import "../.claude/skills/janytree-design/tokens/base.css";
 @import "tailwindcss";
-
-@import "../.claude/skills/janytree-design/styles.css";
 
 @variant dark (&:where(.dark, .dark *));
 
