@@ -48,8 +48,8 @@
 }
 
 /* 입력 칸 및 테이블 제목 */
-.dark input:not(.bg-\[var\(--jt-color-error-bg\)\]),
-.dark select:not(.bg-\[var\(--jt-color-error-bg\)\]),
+.dark input,
+.dark select,
 .dark textarea,
 .dark .bg-zinc-50,
 .dark .dark\:bg-zinc-800 {
@@ -60,7 +60,25 @@
 .dark input,
 .dark select,
 .dark textarea {
-  color: var(--jt-color-text); /* 기본 글자색 (!important 제외하여 상태색이 우선 적용됨) */
+  color: var(--jt-color-text) ; /* 기본 글자색 (아래 status 색상 클래스들이 덮어씁니다) */
+}
+
+/* 다크 모드 경고/불량/초과/미달 상태 색상 강제 유지 */
+.dark [class*="text-red-600"] {
+  color: #ef4444 !important; /* 중량 미달 빨간색 */
+}
+.dark [class*="text-blue-600"] {
+  color: #3b82f6 !important; /* 중량 초과 파란색 */
+}
+.dark [class*="text-red-500"] {
+  color: #ef4444 !important; /* 일반 불량 빨간색 */
+}
+.dark select[class*="text-[var(--jt-color-error-text)]"] {
+  color: #ef4444 !important; /* 불량 글자색 */
+}
+.dark select[class*="bg-[var(--jt-color-error-bg)]"] {
+  background-color: rgba(239, 68, 68, 0.2) !important; /* 불량 배경색 */
+  border-color: #ef4444 !important;
 }
 
 /* 테이블의 바디 등 */
@@ -99,6 +117,65 @@
 .dark .dark\:text-zinc-400,
 .dark .dark\:text-zinc-500 {
   color: var(--jt-color-text-secondary) !important;
+}
+
+/* ── Force Light Mode for Print & Preview (다크모드가 인쇄 미리보기 및 종이 출력에 영향을 미치지 않도록 강제) ── */
+@media print {
+  html, body, #root {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+}
+
+/* 다크모드 하에서도 인쇄용 A4 미리보기 컴포넌트는 무조건 라이트모드 기준 화이트 렌더링 */
+.dark .page-break {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+.dark .page-break * {
+  border-color: #000000 !important;
+}
+
+.dark .page-break h1,
+.dark .page-break h2,
+.dark .page-break h3,
+.dark .page-break span,
+.dark .page-break div,
+.dark .page-break p,
+.dark .page-break td,
+.dark .page-break th {
+  color: #000000 !important;
+}
+
+/* 표의 제목/음영 부분은 연한 회색(bg-zinc-50, bg-zinc-100)을 유지 */
+.dark .page-break .bg-zinc-50,
+.dark .page-break .bg-zinc-100,
+.dark .page-break .bg-zinc-50\/50,
+.dark .page-break .bg-zinc-50\/30,
+.dark .page-break td.bg-zinc-50,
+.dark .page-break tr.bg-zinc-50,
+.dark .page-break tr.bg-zinc-100 {
+  background-color: #f9fafb !important;
+}
+
+.dark .page-break td:not(.bg-zinc-50):not(.bg-zinc-50\/50):not(.bg-zinc-50\/30) {
+  background-color: #ffffff !important;
+}
+
+/* 판정 및 에러 붉은색/푸른색 강제 유지 */
+.dark .page-break [class*="text-red-500"],
+.dark .page-break [class*="text-red-600"] {
+  color: #ef4444 !important;
+}
+
+.dark .page-break [class*="text-green-700"] {
+  color: #15803d !important;
+}
+
+.dark .page-break [class*="text-blue-600"] {
+  color: #2563eb !important;
 }
 
 /* 사이드바 메뉴 활성화 시 배경색 */
