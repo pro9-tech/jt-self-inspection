@@ -570,18 +570,19 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
                   <td className="border border-black font-bold py-2 w-[15%]">충진량 / 충진일</td>
                   <td className="border border-black py-1.5 w-[35%] font-medium">
                     <div className="flex flex-col items-center justify-center leading-tight">
-                      <div className="font-mono text-zinc-900">{record.fillingDate || '-'}</div>
-                      <div className="text-[10px] text-zinc-600 mt-0.5 font-mono">
-                        {record.standardWeight !== null ? (
-                          <>
-                            정식중량: {record.standardWeight}g |{' '}
-                            중량미달: {record.underweightTolerance !== null ? `${Math.round((record.standardWeight - record.underweightTolerance) * 1000) / 1000}g` : '-'} |{' '}
-                            중량초과: {record.overweightTolerance !== null ? `${Math.round((record.standardWeight + record.overweightTolerance) * 1000) / 1000}g` : '-'}
-                          </>
-                        ) : (
-                          '-'
-                        )}
-                      </div>
+                      <div className="font-mono text-zinc-900 mb-1">{record.fillingDate || '-'}</div>
+                      {record.standardWeight !== null ? (
+                        <div className="text-[10px] text-zinc-600 font-mono flex flex-col items-center gap-0.5">
+                          <div>정식중량: {record.standardWeight}g</div>
+                          <div className="flex items-center gap-1.5 justify-center">
+                            <span>중량미달: {record.underweightTolerance !== null ? `${Math.round((record.standardWeight - record.underweightTolerance) * 1000) / 1000}g` : '-'}</span>
+                            <span className="text-zinc-300">|</span>
+                            <span>중량초과: {record.overweightTolerance !== null ? `${Math.round((record.standardWeight + record.overweightTolerance) * 1000) / 1000}g` : '-'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-zinc-600 font-mono">-</div>
+                      )}
                     </div>
                   </td>
                 </tr>
