@@ -462,7 +462,13 @@ const WeightChart = ({
 // A4 출력 전용 레포트 템플릿 컴포넌트
 const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRecord; isPreview?: boolean }) => {
   const year = record.fillingDate ? record.fillingDate.split('-')[0] : new Date().getFullYear();
-  const classificationTitle = record.mainMode === '포장' ? '포장품 자주검사기록' : '충진품 자주검사기록';
+  
+  let classificationTitle = '';
+  if (record.mainMode === '포장') {
+    classificationTitle = '충진품 (포장) 자주검사기록';
+  } else {
+    classificationTitle = `충진품 (${record.subMode || '충진1'}) 자주검사기록`;
+  }
   const reportTitle = `${year}년 ${classificationTitle}`;
 
   // A4 한 장당 들어갈 최대 데이터 개수 (포장 모드는 5개 검사항목이므로 5개 단위, 충진 모드는 10개 단위 분할)
@@ -562,8 +568,21 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
                     {record.itemName || '-'} <span className="text-zinc-500">({record.lotNumber || 'Lot 번호 없음'})</span>
                   </td>
                   <td className="border border-black font-bold py-2 w-[15%]">충진량 / 충진일</td>
-                  <td className="border border-black py-2 w-[35%] font-medium">
-                    {record.standardWeight ? `${record.standardWeight}g (±${record.underweightTolerance}g)` : '-'} / {record.fillingDate || '-'}
+                  <td className="border border-black py-1.5 w-[35%] font-medium">
+                    <div className="flex flex-col items-center justify-center leading-tight">
+                      <div className="font-mono text-zinc-900">{record.fillingDate || '-'}</div>
+                      <div className="text-[10px] text-zinc-600 mt-0.5 font-mono">
+                        {record.standardWeight !== null ? (
+                          <>
+                            정식중량: {record.standardWeight}g |{' '}
+                            중량미달: {record.underweightTolerance !== null ? `${Math.round((record.standardWeight - record.underweightTolerance) * 1000) / 1000}g` : '-'} |{' '}
+                            중량초과: {record.overweightTolerance !== null ? `${Math.round((record.standardWeight + record.overweightTolerance) * 1000) / 1000}g` : '-'}
+                          </>
+                        ) : (
+                          '-'
+                        )}
+                      </div>
+                    </div>
                   </td>
                 </tr>
               </tbody>
