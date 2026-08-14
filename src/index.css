@@ -40,14 +40,19 @@
 }
 
 /* 입력 칸 및 테이블 제목 */
-.dark input,
-.dark select,
+.dark input:not(.bg-\[var\(--jt-color-error-bg\)\]),
+.dark select:not(.bg-\[var\(--jt-color-error-bg\)\]),
 .dark textarea,
 .dark .bg-zinc-50,
 .dark .dark\:bg-zinc-800 {
   background-color: var(--jt-color-bg-subtle) !important;
-  color: var(--jt-color-text) !important;
   border-color: var(--jt-color-border) !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  color: var(--jt-color-text); /* 기본 글자색 (!important 제외하여 상태색이 우선 적용됨) */
 }
 
 /* 테이블의 바디 등 */
@@ -68,18 +73,17 @@
   border-color: var(--jt-color-border) !important;
 }
 
-/* 텍스트 색상 대응 */
-.dark .text-zinc-800,
+/* 텍스트 색상 대응 (상태 색상 클래스 적용을 방해하지 않기 위해 td는 강제 목록에서 제외) */
 .dark .text-zinc-900,
 .dark .dark\:text-zinc-100,
 .dark h1,
 .dark h2,
 .dark h3,
-.dark th,
-.dark td {
+.dark th {
   color: var(--jt-color-text) !important;
 }
 
+.dark .text-zinc-800,
 .dark .text-zinc-700,
 .dark .text-zinc-600,
 .dark .text-zinc-500,
