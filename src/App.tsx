@@ -513,8 +513,10 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
         <div 
           key={pageIdx} 
           className={cn(
-            "page-break flex flex-col justify-between pb-8",
-            isPreview ? "w-[210mm] min-h-[297mm] bg-white shadow-xl p-8 border border-zinc-300 rounded-2xl" : "min-h-[297mm]"
+            "page-break flex flex-col justify-between relative",
+            isPreview 
+              ? "w-[210mm] min-h-[297mm] bg-white shadow-xl p-8 pb-20 border border-zinc-300 rounded-2xl" 
+              : "print-page"
           )}
           style={{ boxSizing: 'border-box' }}
         >
@@ -586,129 +588,140 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
                   <td className="border border-black py-1 w-[80px]">3회</td>
                 </tr>
               </thead>
-              <tbody>
-                {pageMeasurements.map((m, idx) => {
-                  const globalIdx = pageIdx * ROWS_PER_PAGE + idx + 1;
-                  
-                  // 충진1 (중량 + 캡)
-                  if (record.mainMode === '충진' && record.subMode === '충진1') {
-                    const hasWeight = m.vials.some(v => v !== null);
-                    const caps = m.capStatus;
-                    const weightRes = getWeightResult(m.vials, record.standardWeight || 0, record.underweightTolerance || 0, record.overweightTolerance || 0);
-                    const capRes = getStatusResult(caps);
+              {pageMeasurements.map((m, idx) => {
+                const globalIdx = pageIdx * ROWS_PER_PAGE + idx + 1;
+                let content;
+                
+                // 충진1 (중량 + 캡)
+                if (record.mainMode === '충진' && record.subMode === '충진1') {
+                  const hasWeight = m.vials.some(v => v !== null);
+                  const caps = m.capStatus;
+                  const weightRes = getWeightResult(m.vials, record.standardWeight || 0, record.underweightTolerance || 0, record.overweightTolerance || 0);
+                  const capRes = getStatusResult(caps);
 
-                    return (
-                      <React.Fragment key={m.id}>
-                        <tr className="h-[28px]">
-                          <td rowSpan={2} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
-                          <td className="border border-black font-bold bg-zinc-50/30">중량 (g)</td>
-                          <td className="border border-black font-mono">{m.vials[0] !== null ? `${m.vials[0]} g` : '-'}</td>
-                          <td className="border border-black font-mono">{m.vials[1] !== null ? `${m.vials[1]} g` : '-'}</td>
-                          <td className="border border-black font-mono">{m.vials[2] !== null ? `${m.vials[2]} g` : '-'}</td>
-                          <td className={`border border-black font-bold ${weightRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
-                            {hasWeight ? weightRes : '-'}
-                          </td>
-                          <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
-                            {m.vialMemo || ''}
-                          </td>
-                        </tr>
-                        <tr className="h-[28px]">
-                          <td className="border border-black font-bold bg-zinc-50/30">캡 상태</td>
-                          <td className={`border border-black font-bold ${caps[0] === '불량' ? 'text-red-500' : ''}`}>{caps[0] || '-'}</td>
-                          <td className={`border border-black font-bold ${caps[1] === '불량' ? 'text-red-500' : ''}`}>{caps[1] || '-'}</td>
-                          <td className={`border border-black font-bold ${caps[2] === '불량' ? 'text-red-500' : ''}`}>{caps[2] || '-'}</td>
-                          <td className={`border border-black font-bold ${capRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
-                            {caps.some(c => c !== null) ? capRes : '-'}
-                          </td>
-                          <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
-                            {m.capMemo || ''}
-                          </td>
-                        </tr>
-                      </React.Fragment>
-                    );
-                  } 
-                  
-                  // 충진2 (스티커 + 날인)
-                  else if (record.mainMode === '충진' && record.subMode === '충진2') {
-                    const stickers = m.stickerStatus;
-                    const prints = m.printingStatus;
-                    const stickerRes = getStatusResult(stickers);
-                    const printRes = getStatusResult(prints);
+                  content = (
+                    <>
+                      <tr className="h-[28px]">
+                        <td rowSpan={2} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
+                        <td className="border border-black font-bold bg-zinc-50/30">중량 (g)</td>
+                        <td className="border border-black font-mono">{m.vials[0] !== null ? `${m.vials[0]} g` : '-'}</td>
+                        <td className="border border-black font-mono">{m.vials[1] !== null ? `${m.vials[1]} g` : '-'}</td>
+                        <td className="border border-black font-mono">{m.vials[2] !== null ? `${m.vials[2]} g` : '-'}</td>
+                        <td className={`border border-black font-bold ${weightRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                          {hasWeight ? weightRes : '-'}
+                        </td>
+                        <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
+                          {m.vialMemo || ''}
+                        </td>
+                      </tr>
+                      <tr className="h-[28px]">
+                        <td className="border border-black font-bold bg-zinc-50/30">캡 상태</td>
+                        <td className={`border border-black font-bold ${caps[0] === '불량' ? 'text-red-500' : ''}`}>{caps[0] || '-'}</td>
+                        <td className={`border border-black font-bold ${caps[1] === '불량' ? 'text-red-500' : ''}`}>{caps[1] || '-'}</td>
+                        <td className={`border border-black font-bold ${caps[2] === '불량' ? 'text-red-500' : ''}`}>{caps[2] || '-'}</td>
+                        <td className={`border border-black font-bold ${capRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                          {caps.some(c => c !== null) ? capRes : '-'}
+                        </td>
+                        <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
+                          {m.capMemo || ''}
+                        </td>
+                      </tr>
+                    </>
+                  );
+                } 
+                
+                // 충진2 (스티커 + 날인)
+                else if (record.mainMode === '충진' && record.subMode === '충진2') {
+                  const stickers = m.stickerStatus;
+                  const prints = m.printingStatus;
+                  const stickerRes = getStatusResult(stickers);
+                  const printRes = getStatusResult(prints);
 
-                    return (
-                      <React.Fragment key={m.id}>
-                        <tr className="h-[28px]">
-                          <td rowSpan={2} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
-                          <td className="border border-black font-bold bg-zinc-50/30">스티커</td>
-                          <td className={`border border-black font-bold ${stickers[0] === '불량' ? 'text-red-500' : ''}`}>{stickers[0] || '-'}</td>
-                          <td className={`border border-black font-bold ${stickers[1] === '불량' ? 'text-red-500' : ''}`}>{stickers[1] || '-'}</td>
-                          <td className={`border border-black font-bold ${stickers[2] === '불량' ? 'text-red-500' : ''}`}>{stickers[2] || '-'}</td>
-                          <td className={`border border-black font-bold ${stickerRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
-                            {stickers.some(c => c !== null) ? stickerRes : '-'}
-                          </td>
-                          <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
-                            {m.stickerMemo || ''}
-                          </td>
-                        </tr>
-                        <tr className="h-[28px]">
-                          <td className="border border-black font-bold bg-zinc-50/30">날인</td>
-                          <td className={`border border-black font-bold ${prints[0] === '불량' ? 'text-red-500' : ''}`}>{prints[0] || '-'}</td>
-                          <td className={`border border-black font-bold ${prints[1] === '불량' ? 'text-red-500' : ''}`}>{prints[1] || '-'}</td>
-                          <td className={`border border-black font-bold ${prints[2] === '불량' ? 'text-red-500' : ''}`}>{prints[2] || '-'}</td>
-                          <td className={`border border-black font-bold ${printRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
-                            {prints.some(c => c !== null) ? printRes : '-'}
-                          </td>
-                          <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
-                            {m.printingMemo || ''}
-                          </td>
-                        </tr>
-                      </React.Fragment>
-                    );
-                  } 
-                  
-                  // 포장 (날인 + 캡 + 스티커 + 스크래치 + 이물)
-                  else {
-                    const labels = ["날인", "캡", "스티커", "스크래치", "이물"];
-                    const statusArrays = [m.printingStatus, m.capStatus, m.stickerStatus, m.scratchStatus, m.foreignStatus];
-                    const memoFields: ("printingMemo" | "capMemo" | "stickerMemo" | "scratchMemo" | "foreignMemo")[] = [
-                      "printingMemo", "capMemo", "stickerMemo", "scratchMemo", "foreignMemo"
-                    ];
+                  content = (
+                    <>
+                      <tr className="h-[28px]">
+                        <td rowSpan={2} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
+                        <td className="border border-black font-bold bg-zinc-50/30">스티커</td>
+                        <td className={`border border-black font-bold ${stickers[0] === '불량' ? 'text-red-500' : ''}`}>{stickers[0] || '-'}</td>
+                        <td className={`border border-black font-bold ${stickers[1] === '불량' ? 'text-red-500' : ''}`}>{stickers[1] || '-'}</td>
+                        <td className={`border border-black font-bold ${stickers[2] === '불량' ? 'text-red-500' : ''}`}>{stickers[2] || '-'}</td>
+                        <td className={`border border-black font-bold ${stickerRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                          {stickers.some(c => c !== null) ? stickerRes : '-'}
+                        </td>
+                        <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
+                          {m.stickerMemo || ''}
+                        </td>
+                      </tr>
+                      <tr className="h-[28px]">
+                        <td className="border border-black font-bold bg-zinc-50/30">날인</td>
+                        <td className={`border border-black font-bold ${prints[0] === '불량' ? 'text-red-500' : ''}`}>{prints[0] || '-'}</td>
+                        <td className={`border border-black font-bold ${prints[1] === '불량' ? 'text-red-500' : ''}`}>{prints[1] || '-'}</td>
+                        <td className={`border border-black font-bold ${prints[2] === '불량' ? 'text-red-500' : ''}`}>{prints[2] || '-'}</td>
+                        <td className={`border border-black font-bold ${printRes === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                          {prints.some(c => c !== null) ? printRes : '-'}
+                        </td>
+                        <td className="border border-black text-left px-2 max-w-[200px] truncate text-[10px]">
+                          {m.printingMemo || ''}
+                        </td>
+                      </tr>
+                    </>
+                  );
+                } 
+                
+                // 포장 (날인 + 캡 + 스티커 + 스크래치 + 이물)
+                else {
+                  const labels = ["날인", "캡", "스티커", "스크래치", "이물"];
+                  const statusArrays = [m.printingStatus, m.capStatus, m.stickerStatus, m.scratchStatus, m.foreignStatus];
+                  const memoFields: ("printingMemo" | "capMemo" | "stickerMemo" | "scratchMemo" | "foreignMemo")[] = [
+                    "printingMemo", "capMemo", "stickerMemo", "scratchMemo", "foreignMemo"
+                  ];
 
-                    return (
-                      <React.Fragment key={m.id}>
-                        {labels.map((label, labelIdx) => {
-                          const arr = statusArrays[labelIdx];
-                          const resStatus = getStatusResult(arr);
-                          const isFirst = labelIdx === 0;
-                          
-                          return (
-                            <tr key={label} className="h-[24px]">
-                              {isFirst && (
-                                <td rowSpan={5} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
-                              )}
-                              <td className="border border-black font-bold bg-zinc-50/30">{label}</td>
-                              <td className={`border border-black font-bold ${arr[0] === '불량' ? 'text-red-500' : ''}`}>{arr[0] || '-'}</td>
-                              <td className={`border border-black font-bold ${arr[1] === '불량' ? 'text-red-500' : ''}`}>{arr[1] || '-'}</td>
-                              <td className={`border border-black font-bold ${arr[2] === '불량' ? 'text-red-500' : ''}`}>{arr[2] || '-'}</td>
-                              <td className={`border border-black font-bold ${resStatus === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
-                                {arr.some(c => c !== null) ? resStatus : '-'}
-                              </td>
-                              <td className="border border-black text-left px-2 max-w-[200px] truncate text-[9px]">
-                                {m[memoFields[labelIdx]] || ''}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  }
-                })}
-              </tbody>
+                  content = (
+                    <>
+                      {labels.map((label, labelIdx) => {
+                        const arr = statusArrays[labelIdx];
+                        const resStatus = getStatusResult(arr);
+                        const isFirst = labelIdx === 0;
+                        
+                        return (
+                          <tr key={label} className="h-[24px]">
+                            {isFirst && (
+                              <td rowSpan={5} className="border border-black font-mono font-bold bg-zinc-50/50">{globalIdx}</td>
+                            )}
+                            <td className="border border-black font-bold bg-zinc-50/30">{label}</td>
+                            <td className={`border border-black font-bold ${arr[0] === '불량' ? 'text-red-500' : ''}`}>{arr[0] || '-'}</td>
+                            <td className={`border border-black font-bold ${arr[1] === '불량' ? 'text-red-500' : ''}`}>{arr[1] || '-'}</td>
+                            <td className={`border border-black font-bold ${arr[2] === '불량' ? 'text-red-500' : ''}`}>{arr[2] || '-'}</td>
+                            <td className={`border border-black font-bold ${resStatus === '부적합' ? 'text-red-600' : 'text-green-700'}`}>
+                              {arr.some(c => c !== null) ? resStatus : '-'}
+                            </td>
+                            <td className="border border-black text-left px-2 max-w-[200px] truncate text-[9px]">
+                              {m[memoFields[labelIdx]] || ''}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </>
+                  );
+                }
+
+                return (
+                  <tbody key={m.id} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                    {content}
+                  </tbody>
+                );
+              })}
             </table>
           </div>
 
-          {/* 하단 푸터 (오른쪽 하단에 회사명 지정) */}
-          <div className="flex justify-between items-center text-xs font-medium border-t border-black pt-2 mt-4 font-mono">
+          {/* 하단 푸터 (각 페이지 하단에 absolute로 고정) */}
+          <div 
+            className={cn(
+              "flex justify-between items-center text-xs font-medium border-t border-black pt-2 font-mono w-full",
+              isPreview ? "absolute bottom-8 left-8 right-8" : "absolute bottom-0 left-0 right-0"
+            )}
+            style={{ width: isPreview ? 'calc(100% - 64px)' : '100%' }}
+          >
             <span className="font-extrabold">[JTQF-3440-05]</span>
             <span>(주)제니트리</span>
           </div>

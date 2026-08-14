@@ -169,10 +169,23 @@ body {
     margin: 15mm 12mm 15mm 12mm;
   }
 
-  /* 페이지 강제 줄바꿈 */
+  /* 페이지 강제 줄바꿈 및 크기/배치 제어 */
   .page-break {
     page-break-after: always;
     break-after: page;
+  }
+
+  /* 인쇄 시 각 페이지 영역 정확한 높이 및 위치 제어 */
+  .print-page {
+    height: 262mm !important; /* A4 297mm - 상하여백 30mm - 안전마진 */
+    position: relative !important;
+    box-sizing: border-box !important;
+    padding-bottom: 35px !important; /* 푸터와 테이블 겹침 방지 */
+  }
+
+  /* 두 번째 페이지부터 테이블 헤더(thead) 반복 방지 */
+  thead {
+    display: table-row-group !important;
   }
 }
 
