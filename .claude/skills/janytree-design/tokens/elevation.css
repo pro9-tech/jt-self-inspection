@@ -1,0 +1,18 @@
+/* Elevation — light: soft 2-layer shadows; dark: surface brightness steps (Foundation §4-3/4-4). */
+:root{
+  --jt-shadow-1:0 1px 2px rgba(25,31,40,.06),0 1px 3px rgba(25,31,40,.04);
+  --jt-shadow-2:0 2px 8px rgba(25,31,40,.06),0 1px 3px rgba(25,31,40,.05);
+  --jt-shadow-3:0 8px 24px rgba(25,31,40,.10),0 2px 6px rgba(25,31,40,.06);
+  --jt-shadow-4:0 20px 40px rgba(25,31,40,.14),0 4px 10px rgba(25,31,40,.08);
+  --jt-elev-hairline:none;
+  --jt-border-width:1px; /* @kind spacing */
+  --jt-focus-ring:0 0 0 3px rgba(48,92,222,.18);
+}
+[data-theme="dark"]{
+  --jt-elev-0:#0F172A; --jt-elev-1:#1E293B; --jt-elev-2:#273449; --jt-elev-3:#2E3C52; --jt-elev-4:#35435B;
+  --jt-elev-hairline:inset 0 1px 0 rgba(255,255,255,.06);
+  --jt-shadow-dark:0 8px 24px rgba(0,0,0,.36);
+  --jt-shadow-1:var(--jt-elev-hairline); --jt-shadow-2:var(--jt-shadow-dark);
+  --jt-shadow-3:var(--jt-shadow-dark);   --jt-shadow-4:var(--jt-shadow-dark);
+  --jt-focus-ring:0 0 0 3px rgba(126,157,241,.28);
+}

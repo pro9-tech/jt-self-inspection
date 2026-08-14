@@ -1,0 +1,40 @@
+<!-- @dsCard group="Components" viewport="700x300" name="General — Button · Icon · Text" subtitle="Charcoal primary, outline, text, link; sizes, danger, disabled" -->
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px;background:var(--jt-color-bg-container);font:var(--jt-type-body)}.grp{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}.lbl{font:var(--jt-type-caption);color:var(--jt-color-text-tertiary);width:100%;margin-bottom:-4px;letter-spacing:.04em;text-transform:uppercase}</style></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const NS = window.JanytreeDesignSystem_bcaf0e;
+
+const {Button,Icon,Text}=NS;
+function Demo(){return <div>
+<div className="grp"><span className="lbl">variants</span>
+<Button variant="primary">저장</Button>
+<Button variant="default">취소</Button>
+<Button variant="text">더보기</Button>
+<Button variant="link">사용 가이드</Button>
+</div>
+<div className="grp"><span className="lbl">sizes · icons · loading</span>
+<Button size="sm">28px</Button>
+<Button size="md" iconLeft="add">원료 추가</Button>
+<Button size="lg" iconRight="arrow_forward">다음</Button>
+<Button loading>발행 중</Button>
+</div>
+<div className="grp"><span className="lbl">danger · disabled</span>
+<Button variant="primary" danger iconLeft="delete">삭제</Button>
+<Button variant="default" danger>반려</Button>
+<Button variant="primary" disabled>저장</Button>
+</div>
+<div className="grp"><span className="lbl">icon · text</span>
+<Icon name="science"/><Icon name="verified" filled/><Icon name="description" size={20}/>
+<Text role="h3" style={{marginLeft:12}}>원료 구성</Text>
+<Text role="sm" tone="secondary">보조 설명</Text>
+<Text role="body" numeric>0.040 %</Text>
+</div>
+</div>}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

@@ -1,0 +1,32 @@
+<!-- @dsCard group="Components" viewport="700x340" name="Navigation — Menu · Tabs · Breadcrumb · Dropdown · Pagination · Steps" subtitle="Active state is always accent blue" -->
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px;background:var(--jt-color-bg-container);font:var(--jt-type-body)}.grp{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}.lbl{font:var(--jt-type-caption);color:var(--jt-color-text-tertiary);width:100%;margin-bottom:-4px;letter-spacing:.04em;text-transform:uppercase}</style></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const NS = window.JanytreeDesignSystem_bcaf0e;
+
+const {Menu,Tabs,Breadcrumb,Dropdown,Pagination,Steps,Button}=NS;
+function Demo(){const [t,setT]=React.useState('ing');const [p,setP]=React.useState(3);const [k,setK]=React.useState('docs');
+return <div style={{display:'flex',flexDirection:'column',gap:16}}>
+<Tabs activeKey={t} onChange={setT} items={[{key:'info',label:'기본정보'},{key:'ing',label:'전성분',count:76},{key:'hist',label:'발행 이력'}]}/>
+<div style={{display:'flex',gap:24,alignItems:'flex-start'}}>
+ <div style={{width:200,border:'1px solid var(--jt-color-border)',borderRadius:'var(--jt-r-md)',padding:'6px 0'}}>
+  <Menu activeKey={k} onSelect={setK} items={[{key:'dash',label:'대시보드',icon:'dashboard'},{key:'docs',label:'문서 발행',icon:'description',badge:12},{key:'set',label:'설정',icon:'settings'}]}/>
+ </div>
+ <div style={{flex:1,display:'flex',flexDirection:'column',gap:16}}>
+  <Breadcrumb items={[{label:'PLM',href:'#'},{label:'품목',href:'#'},{label:'JT-AMP-0417'}]}/>
+  <Steps current={2} items={[{label:'작성'},{label:'검토'},{label:'승인'},{label:'발행'}]}/>
+  <div style={{display:'flex',gap:12,alignItems:'center'}}>
+   <Dropdown trigger={<Button variant="default" iconRight="expand_more">작업</Button>} items={[{key:'e',label:'편집',icon:'edit'},{key:'d',label:'복제',icon:'content_copy'},{divider:true},{key:'x',label:'삭제',icon:'delete',danger:true}]}/>
+  </div>
+  <Pagination page={p} total={412} onChange={setP}/>
+ </div>
+</div>
+</div>}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

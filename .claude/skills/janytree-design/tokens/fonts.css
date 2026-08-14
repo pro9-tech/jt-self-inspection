@@ -1,0 +1,21 @@
+/* Fonts — Pretendard (KR/base) + Figtree (EN/num) + Noto Sans SC/TC (CJK) + Material Symbols Rounded.
+   Loaded from CDN per JT_디자인시스템_MASTER_v3.0 §2. No binaries are vendored — this is intentional.
+   VERIFIED: the jsDelivr stylesheet below serves @font-face rules for 'Pretendard Variable'
+   (weight 45–920, font-display: swap, dynamic woff2 subsets). No font file is missing.
+   Swap these @imports for local @font-face rules only if the brand supplies .woff2 binaries
+   for a self-hosted / offline build. */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css");
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400..500,0..1,0&display=block");
+
+:root{
+  --jt-seed-font-base:"Pretendard Variable",Pretendard,"Figtree","Noto Sans SC","Noto Sans TC",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI","PingFang SC","Microsoft YaHei","PingFang TC","Microsoft JhengHei","Helvetica Neue",Arial,sans-serif;
+  --jt-seed-font-num:"Figtree","Pretendard Variable",ui-monospace,sans-serif;
+  --jt-font-base:var(--jt-seed-font-base);
+  --jt-font-num:var(--jt-seed-font-num);
+  --jt-font-icon:"Material Symbols Rounded";
+}
+
+.material-symbols-rounded{font-family:var(--jt-font-icon);font-weight:400;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;word-wrap:normal;direction:ltr;-webkit-font-feature-settings:"liga";-webkit-font-smoothing:antialiased;font-variation-settings:"FILL" 0,"wght" 400,"GRAD" 0,"opsz" 24}
+.material-symbols-rounded.is-filled{font-variation-settings:"FILL" 1,"wght" 400,"GRAD" 0,"opsz" 24}
+.material-symbols-rounded.size-20{font-size:20px;font-variation-settings:"FILL" 0,"wght" 400,"GRAD" 0,"opsz" 20}

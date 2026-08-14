@@ -309,11 +309,11 @@ const WeightChart = ({
                   y1={getY(std + maxTolerance)} 
                   x2={width - padding} 
                   y2={getY(std + maxTolerance)} 
-                  stroke="var(--color-error)" 
+                  stroke="var(--jt-color-error)" 
                   strokeWidth="1" 
                   strokeDasharray="4 4" 
                 />
-                <text x={width - padding + 5} y={getY(std + maxTolerance) + 3} fontSize="8" fill="var(--color-error)">
+                <text x={width - padding + 5} y={getY(std + maxTolerance) + 3} fontSize="8" fill="var(--jt-color-error)">
                   +{maxTolerance}g
                 </text>
                 {/* 정석 중량선 */}
@@ -322,10 +322,10 @@ const WeightChart = ({
                   y1={getY(std)} 
                   x2={width - padding} 
                   y2={getY(std)} 
-                  stroke="var(--color-success)" 
+                  stroke="var(--jt-color-success)" 
                   strokeWidth="1.5" 
                 />
-                <text x={width - padding + 5} y={getY(std) + 3} fontSize="8" fill="var(--color-success)">
+                <text x={width - padding + 5} y={getY(std) + 3} fontSize="8" fill="var(--jt-color-success)">
                   {std}g
                 </text>
                 {/* 하한값 선 */}
@@ -334,11 +334,11 @@ const WeightChart = ({
                   y1={getY(std - minTolerance)} 
                   x2={width - padding} 
                   y2={getY(std - minTolerance)} 
-                  stroke="var(--color-error)" 
+                  stroke="var(--jt-color-error)" 
                   strokeWidth="1" 
                   strokeDasharray="4 4" 
                 />
-                <text x={width - padding + 5} y={getY(std - minTolerance) + 3} fontSize="8" fill="var(--color-error)">
+                <text x={width - padding + 5} y={getY(std - minTolerance) + 3} fontSize="8" fill="var(--jt-color-error)">
                   -{minTolerance}g
                 </text>
               </>
@@ -378,7 +378,7 @@ const WeightChart = ({
                     <path 
                       d={pathD} 
                       fill="none" 
-                      stroke="var(--color-accent)" 
+                      stroke="var(--jt-color-accent)" 
                       strokeWidth="2.5" 
                       strokeLinecap="round" 
                       strokeLinejoin="round" 
@@ -395,7 +395,7 @@ const WeightChart = ({
                         cx={p.x} 
                         cy={p.y} 
                         r="6" 
-                        fill="var(--color-accent)" 
+                        fill="var(--jt-color-accent)" 
                         stroke="#ffffff" 
                         strokeWidth="2" 
                         className="cursor-pointer transition-all hover:r-8"
@@ -765,10 +765,10 @@ const NumberInputWithButtons = ({
   };
 
   return (
-    <div className={cn("flex items-center h-[var(--control-height)] bg-[var(--color-primary-bg)]/50 rounded-lg px-1 border border-transparent focus-within:border-[var(--color-border)] transition-all", className)}>
+    <div className={cn("flex items-center h-[var(--control-height)] bg-[var(--jt-color-primary-bg)]/50 rounded-lg px-1 border border-transparent focus-within:border-[var(--jt-color-border)] transition-all", className)}>
       <button 
         onClick={handleDecrement}
-        className="p-1 hover:bg-[var(--color-primary-bg)] rounded-md transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+        className="p-1 hover:bg-[var(--jt-color-primary-bg)] rounded-md transition-colors text-[var(--jt-color-text-tertiary)] hover:text-[var(--jt-color-text-secondary)]"
         type="button"
       >
         <Minus size={12} />
@@ -797,14 +797,14 @@ const NumberInputWithButtons = ({
           setLocalValue(value !== null ? value.toFixed(1) : '');
         }}
         className={cn(
-          "bg-transparent border-none focus:ring-0 text-center text-[var(--fs-base)] w-full p-1",
+          "bg-transparent border-none focus:ring-0 text-center text-[var(--jt-fs-base)] w-full p-1",
           inputClassName
         )}
         placeholder={placeholder}
       />
       <button 
         onClick={handleIncrement}
-        className="p-1 hover:bg-[var(--color-primary-bg)] rounded-md transition-colors text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+        className="p-1 hover:bg-[var(--jt-color-primary-bg)] rounded-md transition-colors text-[var(--jt-color-text-tertiary)] hover:text-[var(--jt-color-text-secondary)]"
         type="button"
       >
         <Plus size={12} />
@@ -826,19 +826,19 @@ const StatusToggle = ({
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "w-full h-[var(--control-height)] pl-2 pr-6 rounded-lg text-[var(--fs-sm)] font-bold transition-all border appearance-none cursor-pointer focus:ring-2 focus:ring-[var(--color-primary-bg)] outline-none",
+          "w-full h-[var(--control-height)] pl-2 pr-6 rounded-lg text-[var(--jt-fs-sm)] font-bold transition-all border appearance-none cursor-pointer focus:ring-2 focus:ring-[var(--jt-color-primary-bg)] outline-none",
           value === '불량' 
-            ? "bg-[var(--color-error-bg)] border-[var(--color-error-border)] text-[var(--color-error-text)] font-extrabold" 
+            ? "bg-[var(--jt-color-error-bg)] border-[var(--jt-color-error-border)] text-[var(--jt-color-error-text)] font-extrabold" 
             : value === '정상'
-              ? "bg-[var(--color-bg-container)] border-[var(--color-border)] text-[var(--color-text)] font-extrabold"
-              : "bg-[var(--color-primary-bg)] border-[var(--color-primary-border)] text-[var(--color-text-secondary)] italic"
+              ? "bg-[var(--jt-color-bg-container)] border-[var(--jt-color-border)] text-[var(--jt-color-text)] font-extrabold"
+              : "bg-[var(--jt-color-primary-bg)] border-[var(--jt-color-primary-border)] text-[var(--jt-color-text-secondary)] italic"
         )}
       >
-        <option value="" className="text-[var(--color-text-tertiary)]">선택</option>
-        <option value="정상" className="text-[var(--color-text)] not-italic font-bold">정상</option>
-        <option value="불량" className="text-[var(--color-error)] not-italic font-bold">불량</option>
+        <option value="" className="text-[var(--jt-color-text-tertiary)]">선택</option>
+        <option value="정상" className="text-[var(--jt-color-text)] not-italic font-bold">정상</option>
+        <option value="불량" className="text-[var(--jt-color-error)] not-italic font-bold">불량</option>
       </select>
-      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-secondary)]">
+      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--jt-color-text-secondary)]">
         <ChevronDown size={10} />
       </div>
     </div>
@@ -1137,10 +1137,22 @@ function AppContent() {
 
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark';
+  });
+
   useEffect(() => {
-    document.documentElement.classList.remove('dark');
-    localStorage.removeItem('theme');
-  }, []);
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   const [record, setRecord] = useState<FillingRecord>({
     id: Math.random().toString(36).substr(2, 9),
@@ -1604,36 +1616,31 @@ function AppContent() {
 
   if (!isAuthReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-layout)]">
-        <Loader2 className="animate-spin text-[var(--color-text-secondary)]" size={32} />
+      <div className="min-h-screen flex items-center justify-center bg-[var(--jt-color-bg-layout)]">
+        <Loader2 className="animate-spin text-[var(--jt-color-text-secondary)]" size={32} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-[var(--color-bg-layout)] text-[var(--color-text)] font-sans">
+    <div className="min-h-screen flex bg-[var(--jt-color-bg-layout)] text-[var(--jt-color-text)] font-sans">
       
       {/* ── 1. 왼쪽 세로형 사이드바 (인쇄 시 숨김) ── */}
-      <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-[var(--color-border)] dark:border-zinc-800 p-6 flex flex-col gap-6 shrink-0 print-hidden justify-between">
+      <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-[var(--jt-color-border)] dark:border-zinc-800 p-6 flex flex-col gap-6 shrink-0 print-hidden justify-between">
         <div className="space-y-6">
           {/* 로고 영역 (현 위치 유지) */}
-          <div className="flex items-center justify-center cursor-pointer select-none pb-4 border-b border-[var(--color-border)] dark:border-zinc-800 w-full" onClick={handleGoDashboard} title="대시보드로 이동">
+          <div className="flex items-center justify-center cursor-pointer select-none pb-4 border-b border-[var(--jt-color-border)] dark:border-zinc-800 w-full" onClick={handleGoDashboard} title="대시보드로 이동">
             <img 
               src="/brand/logo/logo-h.svg?v=2" 
               alt="Zenitry Logo" 
-              className="h-[26px] w-auto object-contain block dark:hidden" 
-            />
-            <img 
-              src="/brand/logo/logo-h-light.svg?v=2" 
-              alt="Zenitry Logo" 
-              className="h-[26px] w-auto object-contain hidden dark:block" 
+              className="h-[26px] w-auto object-contain" 
             />
           </div>
 
           {/* 측정 분류 모드 */}
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">분류 모드</label>
-            <div className="flex bg-[var(--color-primary-bg)] p-1 rounded-xl w-full">
+            <div className="flex bg-[var(--jt-color-primary-bg)] p-1 rounded-xl w-full">
               {(['충진', '포장'] as const).map((m) => (
                 <button
                   key={m}
@@ -1685,6 +1692,14 @@ function AppContent() {
                 구글 로그인
               </button>
             )}
+
+            <button 
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
+            >
+              {isDarkMode ? <Sun size={14} className="text-zinc-400" /> : <Moon size={14} className="text-zinc-400" />}
+              {isDarkMode ? '라이트 모드' : '다크 모드'}
+            </button>
 
             <button 
               onClick={() => {
@@ -1744,11 +1759,11 @@ function AppContent() {
       {/* ── 2. 메인 콘텐츠 영역 (인쇄 시 숨김) ── */}
       <main className="flex-1 p-6 md:p-8 overflow-y-auto space-y-6 print-hidden">
         {/* 상단 가운데 정렬 제목 */}
-        <header className="text-center py-4 border-b border-[var(--color-border)]">
-          <h1 className="text-2xl font-black tracking-tight text-[var(--color-text)]">
+        <header className="text-center py-4 border-b border-[var(--jt-color-border)]">
+          <h1 className="text-2xl font-black tracking-tight text-[var(--jt-color-text)]">
             충진품 자주측정 ({record.mainMode})
           </h1>
-          <p className="text-xs text-[var(--color-text-secondary)] mt-1 uppercase tracking-widest font-mono">
+          <p className="text-xs text-[var(--jt-color-text-secondary)] mt-1 uppercase tracking-widest font-mono">
             Filling Product Measurement Record
           </p>
         </header>

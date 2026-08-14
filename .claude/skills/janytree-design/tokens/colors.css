@@ -1,0 +1,51 @@
+/* Colors — Seed → Map. Foundation v1.0 §1 / Master v3.0 §2–3. */
+:root{
+  /* ── Seed ── */
+  --jt-seed-color-primary:#1F2328;
+  --jt-seed-color-neutral:#1F2328;
+  --jt-seed-color-accent:#305CDE;
+  --jt-seed-color-success:#14A870;
+  --jt-seed-color-warning:#F0B01C;
+  --jt-seed-color-error:#E14B4B;
+  --jt-seed-color-info:#305CDE;
+
+  /* ── neutral (brand ink) 12 steps ── */
+  --jt-neutral-0:#FFFFFF;   --jt-neutral-50:#F7F8F9;  --jt-neutral-100:#EEF0F2; --jt-neutral-200:#DEE2E6;
+  --jt-neutral-300:#C5CBD1; --jt-neutral-400:#9DA5AF; --jt-neutral-500:#757F8A; --jt-neutral-600:#5A6470;
+  --jt-neutral-700:#434B55; --jt-neutral-800:#2E343B; --jt-neutral-900:#1F2328; --jt-neutral-950:#14171A;
+
+  /* ── gray (clean UI gray) 10 steps ── */
+  --jt-gray-50:#F9FAFB;  --jt-gray-100:#F2F4F6; --jt-gray-200:#E5E8EB; --jt-gray-300:#D1D6DB; --jt-gray-400:#B0B8C1;
+  --jt-gray-500:#8B95A1; --jt-gray-600:#6B7684; --jt-gray-700:#4E5968; --jt-gray-800:#333D4B; --jt-gray-900:#191F28;
+
+  /* ── Core semantic scales ── */
+  --jt-blue-50:#EEF3FE;  --jt-blue-100:#D6E1FC; --jt-blue-300:#7E9DF1; --jt-blue-400:#5578E8;
+  --jt-blue-500:#305CDE; --jt-blue-600:#2A4EC0; --jt-blue-700:#24419E; --jt-blue-900:#1B2F66;
+  --jt-green-50:#E7F7F0; --jt-green-100:#C2ECD9; --jt-green-500:#14A870; --jt-green-600:#0F8E5F; --jt-green-700:#0C744E; --jt-green-900:#074A32;
+  --jt-yellow-50:#FEF6E4;--jt-yellow-100:#FBE8B4;--jt-yellow-500:#F0B01C;--jt-yellow-600:#D2960F;--jt-yellow-700:#A9760C;--jt-yellow-900:#6B4A0C;
+  --jt-red-50:#FDECEC;   --jt-red-100:#FAD3D3;  --jt-red-500:#E14B4B;  --jt-red-600:#C93A3F;  --jt-red-700:#A82F35;  --jt-red-900:#6B1F23;
+
+  /* ── Extended (data-viz / special emphasis) ── */
+  --jt-purple-50:#F4EFFB; --jt-purple-100:#E6D8F5; --jt-purple-500:#6C3BAA; --jt-purple-600:#5C3092; --jt-purple-700:#4B2777;
+  --jt-teal-50:#E6F6F6;   --jt-teal-100:#BEE8E8;   --jt-teal-500:#12A3A3;   --jt-teal-600:#0D8A8A;   --jt-teal-700:#0B7070;
+
+  /* ── 6-step derivation: primary (charcoal) ── */
+  --jt-color-primary-bg:#EEF0F2; --jt-color-primary-border:#DEE2E6; --jt-color-primary-hover:#2E343B;
+  --jt-color-primary:#1F2328;    --jt-color-primary-active:#14171A; --jt-color-primary-text:#1F2328;
+  --jt-color-on-primary:#FFFFFF;
+
+  /* ── 6-step derivation: accent (info blue) ── */
+  --jt-color-accent-bg:#EEF3FE; --jt-color-accent-border:#D6E1FC; --jt-color-accent-hover:#5578E8;
+  --jt-color-accent:#305CDE;    --jt-color-accent-active:#2A4EC0; --jt-color-accent-text:#24419E;
+
+  --jt-color-success-bg:#E7F7F0; --jt-color-success-border:#C2ECD9; --jt-color-success:#14A870; --jt-color-success-solid:#0F8E5F; --jt-color-success-text:#0C744E;
+  --jt-color-warning-bg:#FEF6E4; --jt-color-warning-border:#FBE8B4; --jt-color-warning:#F0B01C; --jt-color-warning-solid:#D2960F; --jt-color-warning-text:#6B4A0C;
+  --jt-color-error-bg:#FDECEC;   --jt-color-error-border:#FAD3D3;   --jt-color-error:#E14B4B;   --jt-color-error-solid:#C93A3F;   --jt-color-error-text:#A82F35;
+  --jt-color-info-bg:#EEF3FE;    --jt-color-info-border:#D6E1FC;    --jt-color-info:#305CDE;    --jt-color-info-solid:#2A4EC0;    --jt-color-info-text:#24419E;
+
+  /* ── App launcher icon registry (Master §7) — icon tint only, never primary ── */
+  --jt-app-plm:#2E8E76;      --jt-app-newproduct:#7C9A3E; --jt-app-sop:#2C8AA6;      --jt-app-factory:#5B5FB8;
+  --jt-app-estimate:#B98A22; --jt-app-partner:#C0603A;    --jt-app-hr:#7F4FAE;       --jt-app-edu:#9846AC;
+  --jt-app-coding:#AD4592;   --jt-app-apphub:#B5486B;     --jt-app-office:#1F2328;   --jt-app-webadmin:#EF7519;
+  --jt-app-marketing:#BC4B7C;--jt-app-commerce:#A83E4D;   --jt-app-membership:#C91F37;--jt-app-cs:#9A2A38;
+}

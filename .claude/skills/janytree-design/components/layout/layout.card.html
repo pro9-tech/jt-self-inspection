@@ -1,0 +1,25 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Layout — AppShell · Divider" subtitle="236px sider + 56px header + scrolling content" -->
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px;background:var(--jt-color-bg-container);font:var(--jt-type-body)}.grp{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}.lbl{font:var(--jt-type-caption);color:var(--jt-color-text-tertiary);width:100%;margin-bottom:-4px;letter-spacing:.04em;text-transform:uppercase}</style></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const NS = window.JanytreeDesignSystem_bcaf0e;
+
+const {AppShell,SiderSection,Menu,Divider,Breadcrumb,Avatar}=NS;
+function Demo(){const [k,setK]=React.useState('docs');
+return <div style={{height:300,border:'1px solid var(--jt-color-border)',borderRadius:'var(--jt-r-lg)',overflow:'hidden'}}>
+<AppShell
+ sider={<><div style={{padding:'14px 16px',borderBottom:'1px solid var(--jt-color-split)'}}><img src="../../assets/logo/logo-h.svg" alt="Janytree" style={{height:24}}/></div>
+ <SiderSection title="문서"><Menu activeKey={k} onSelect={setK} items={[{key:'dash',label:'대시보드',icon:'dashboard'},{key:'docs',label:'문서 발행',icon:'description',badge:12},{key:'item',label:'품목',icon:'inventory_2'}]}/></SiderSection></>}
+ header={<><Breadcrumb items={[{label:'PLM',href:'#'},{label:'문서',href:'#'},{label:'JT-ING-2026-0417'}]}/><span style={{flex:1}}/><Avatar name="김연"/></>}>
+ <div style={{font:'var(--jt-type-h3)',marginBottom:12}}>전성분 보고서</div>
+ <Divider label="발행 이력"/>
+ <div style={{font:'var(--jt-type-sm)',color:'var(--jt-color-text-secondary)'}}>본문 영역만 스크롤합니다. 사이더·헤더는 고정입니다.</div>
+</AppShell></div>}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

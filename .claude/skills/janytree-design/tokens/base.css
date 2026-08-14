@@ -1,0 +1,13 @@
+/* Minimal base resets. Everything else lives in components. */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:var(--jt-type-body);color:var(--jt-color-text);background:var(--jt-color-bg-layout);word-break:keep-all;-webkit-font-smoothing:antialiased}
+:lang(zh),[lang^="zh"]{line-height:1.7}
+h1,h2,h3,h4,p,figure{margin:0}
+a{color:var(--jt-color-link);text-decoration:none;transition:color var(--jt-dur-fast) var(--jt-ease-standard)}
+a:hover{color:var(--jt-color-link-hover);text-decoration:underline}
+img{max-width:100%;height:auto}
+table{border-collapse:collapse}
+.jt-num{font-family:var(--jt-font-num);font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--jt-color-focus-ring);outline-offset:2px}
+@media print{*{box-shadow:none!important;backdrop-filter:none!important;animation:none!important;transition:none!important}}

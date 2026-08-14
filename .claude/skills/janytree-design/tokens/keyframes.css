@@ -1,0 +1,8 @@
+/* Keyframes used by components (Foundation §5-4). */
+@keyframes jt-spin{to{transform:rotate(360deg)}}
+@keyframes jt-fade{from{opacity:0}to{opacity:1}}
+@keyframes jt-pop{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
+@keyframes jt-drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes jt-slide{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes jt-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes jt-shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}

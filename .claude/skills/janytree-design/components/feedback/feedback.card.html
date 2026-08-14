@@ -1,0 +1,31 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Feedback — Alert · Modal · Toast · Progress · Skeleton · Popconfirm · Result" subtitle="Say what happened and what to do next; never apologise" -->
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px;background:var(--jt-color-bg-container);font:var(--jt-type-body)}.grp{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}.lbl{font:var(--jt-type-caption);color:var(--jt-color-text-tertiary);width:100%;margin-bottom:-4px;letter-spacing:.04em;text-transform:uppercase}</style></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const NS = window.JanytreeDesignSystem_bcaf0e;
+
+const {Alert,Modal,Drawer,Toast,Notification,Progress,Skeleton,Spin,Popconfirm,Result,Button}=NS;
+function Demo(){const [m,setM]=React.useState(false);
+return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+<Alert tone="warning" title="함량 합계가 100%를 넘습니다">합계 100.4% — 원료 3건의 함량을 조정하세요.</Alert>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+ <Alert tone="success" title="발행 완료">JT-ING-2026-0417 v3</Alert>
+ <Alert tone="error" title="CAS 번호를 찾을 수 없습니다" onClose={()=>{}}>원료 2건의 CAS 번호를 확인하세요.</Alert>
+</div>
+<div className="grp"><Toast tone="success" message="저장되었습니다"/><Spin/><Popconfirm title="이 원료를 삭제할까요?" description="되돌릴 수 없습니다."><Button variant="text" danger iconLeft="delete">삭제</Button></Popconfirm><Button variant="default" onClick={()=>setM(true)}>모달 열기</Button></div>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,alignItems:'start'}}>
+ <div style={{display:'flex',flexDirection:'column',gap:10}}><Progress value={64}/><Progress value={100}/><Skeleton width="70%" height={16}/><Skeleton width="45%" height={12}/></div>
+ <Notification tone="success" title="전성분보고서 발행 완료" description="JT-ING-2026-0417 v3" time="방금 전" onClose={()=>{}}/>
+</div>
+<Modal open={m} title="원료 추가" onClose={()=>setM(false)} footer={<><Button variant="default" onClick={()=>setM(false)}>취소</Button><Button variant="primary" onClick={()=>setM(false)}>추가</Button></>}>
+ <div style={{font:'var(--jt-type-body)',color:'var(--jt-color-text-secondary)'}}>INCI명 또는 CAS 번호로 검색하세요.</div>
+</Modal>
+</div>}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

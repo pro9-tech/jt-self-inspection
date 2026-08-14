@@ -1,0 +1,9 @@
+/* Motion (Foundation §5). */
+:root{
+  --jt-dur-instant:100ms; /* @kind other */ --jt-dur-fast:160ms; /* @kind other */ --jt-dur-base:240ms; /* @kind other */ --jt-dur-slow:360ms; /* @kind other */ --jt-dur-page:480ms; /* @kind other */
+  --jt-ease-standard:cubic-bezier(.4,0,.2,1); /* @kind other */
+  --jt-ease-decelerate:cubic-bezier(0,0,.2,1); /* @kind other */
+  --jt-ease-accelerate:cubic-bezier(.4,0,1,1); /* @kind other */
+  --jt-ease-emphasized:cubic-bezier(.2,0,0,1); /* @kind other */
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

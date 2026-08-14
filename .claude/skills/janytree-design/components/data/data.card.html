@@ -1,0 +1,39 @@
+<!-- @dsCard group="Components" viewport="700x460" name="Data — Table · Card · Tag · Descriptions · Statistic · Timeline · Empty" subtitle="Tabular numerals, tinted status capsules, neutral card surfaces" -->
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px;background:var(--jt-color-bg-container);font:var(--jt-type-body)}.grp{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}.lbl{font:var(--jt-type-caption);color:var(--jt-color-text-tertiary);width:100%;margin-bottom:-4px;letter-spacing:.04em;text-transform:uppercase}</style></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const NS = window.JanytreeDesignSystem_bcaf0e;
+
+const {Table,Card,AppTile,Tag,Badge,Descriptions,Statistic,Timeline,Empty,Avatar,Tooltip,Icon}=NS;
+const rows=[{id:1,name:'Niacinamide',cas:'98-92-0',pct:'5.000',st:'승인'},{id:2,name:'Adenosine',cas:'58-61-7',pct:'0.040',st:'검토 대기'},{id:3,name:'Panthenol',cas:'81-13-0',pct:'1.250',st:'규격 초과'}];
+const tone={'승인':'success','검토 대기':'warning','규격 초과':'error'};
+function Demo(){return <div style={{display:'flex',flexDirection:'column',gap:18}}>
+<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+ <Statistic label="이번 달 발행" value="128" unit="건" delta="+12" icon="description"/>
+ <Statistic label="승인 대기" value="7" unit="건" icon="fact_check"/>
+ <Statistic label="등록 품목" value="1,204" icon="inventory_2"/>
+ <Statistic label="규격 초과" value="2" unit="건" delta="-1" deltaTone="error" icon="warning"/>
+</div>
+<Table columns={[{key:'name',title:'원료명 (INCI)'},{key:'cas',title:'CAS',numeric:true,muted:true},{key:'pct',title:'함량 %',align:'right',numeric:true,sortable:true},{key:'st',title:'상태',render:r=><Tag tone={tone[r.st]}>{r.st}</Tag>}]} rows={rows} selectedKeys={[2]}/>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+ <Card title="품목 기본정보" accent={{icon:'science',color:'var(--jt-teal-600)'}} extra={<Badge count={3}/>}>
+  <Descriptions columns={2} items={[{label:'문서번호',value:'JT-ING-2026-0417',numeric:true},{label:'버전',value:<Tag tone="info">v3</Tag>},{label:'담당',value:<span style={{display:'inline-flex',gap:8,alignItems:'center'}}><Avatar name="김연" size={22}/>김연구</span>},{label:'발행일',value:'2026-08-04',numeric:true}]}/>
+ </Card>
+ <Card title="발행 이력">
+  <Timeline items={[{title:'v3 발행',meta:'2026-08-04 14:22 · 김연구'},{title:'검토 완료',meta:'2026-08-03 09:10 · 박품질'},{title:'승인 대기',tone:'pending'}]}/>
+ </Card>
+</div>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,alignItems:'start'}}>
+ <AppTile name="JANYTREE PLM" icon="science" color="var(--jt-app-plm)"/>
+ <AppTile name="JT_Estimate" icon="payments" color="var(--jt-app-estimate)"/>
+ <div style={{border:'1px solid var(--jt-color-border)',borderRadius:'var(--jt-r-lg)'}}><Empty icon="description" title="문서 없음" description="품목을 선택해 시작하세요."/></div>
+</div>
+</div>}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

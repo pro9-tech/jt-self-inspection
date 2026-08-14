@@ -1,0 +1,72 @@
+/* Alias tokens — the names components actually use (Master §4). */
+:root{
+  --jt-color-text:var(--jt-neutral-900);
+  --jt-color-text-secondary:var(--jt-neutral-500);
+  --jt-color-text-tertiary:var(--jt-neutral-400);
+  --jt-color-text-disabled:var(--jt-neutral-300);
+  --jt-color-text-inverse:#FFFFFF;
+
+  --jt-color-bg-layout:var(--jt-gray-50);
+  --jt-color-bg-container:var(--jt-neutral-0);
+  --jt-color-bg-elevated:var(--jt-neutral-0);
+  --jt-color-bg-subtle:var(--jt-gray-100);
+  --jt-color-bg-hover:var(--jt-gray-50);
+
+  --jt-color-border:var(--jt-neutral-200);
+  --jt-color-border-strong:var(--jt-neutral-300);
+  --jt-color-split:var(--jt-neutral-100);
+
+  --jt-color-link:var(--jt-color-accent);
+  --jt-color-link-hover:var(--jt-color-accent-hover);
+  --jt-color-focus-ring:var(--jt-color-accent);
+
+  --jt-color-table-header-bg:var(--jt-neutral-50);
+  --jt-color-row-hover:var(--jt-color-accent-bg);
+  --jt-color-row-selected:var(--jt-color-accent-bg);
+  --jt-color-overlay:rgba(20,23,26,.45);
+}
+[data-theme="dark"]{
+  --jt-color-text:rgba(255,255,255,.88);
+  --jt-color-text-secondary:rgba(255,255,255,.55);
+  --jt-color-text-tertiary:rgba(255,255,255,.38);
+  --jt-color-text-disabled:rgba(255,255,255,.24);
+  --jt-color-text-inverse:var(--jt-neutral-900);
+
+  --jt-color-bg-layout:#0F172A;
+  --jt-color-bg-container:#1E293B;
+  --jt-color-bg-elevated:#273449;
+  --jt-color-bg-subtle:#273449;
+  --jt-color-bg-hover:rgba(255,255,255,.05);
+
+  --jt-color-border:rgba(255,255,255,.14);
+  --jt-color-border-strong:rgba(255,255,255,.24);
+  --jt-color-split:rgba(255,255,255,.08);
+
+  --jt-color-primary:var(--jt-neutral-50);
+  --jt-color-primary-hover:#FFFFFF;
+  --jt-color-primary-active:var(--jt-neutral-200);
+  --jt-color-primary-text:var(--jt-neutral-900);
+  --jt-color-on-primary:var(--jt-neutral-900);
+  --jt-color-primary-bg:rgba(255,255,255,.08);
+  --jt-color-primary-border:rgba(255,255,255,.18);
+
+  --jt-color-accent:#7E9DF1;
+  --jt-color-accent-hover:#9CB4F5;
+  --jt-color-accent-active:#5578E8;
+  --jt-color-accent-bg:rgba(126,157,241,.12);
+  --jt-color-accent-border:rgba(126,157,241,.28);
+  --jt-color-accent-text:#9CB4F5;
+  --jt-color-link:#7E9DF1;
+  --jt-color-link-hover:#9CB4F5;
+  --jt-color-focus-ring:#7E9DF1;
+
+  --jt-color-success-bg:rgba(20,168,112,.14); --jt-color-success-border:rgba(20,168,112,.32); --jt-color-success-text:#4FD3A0;
+  --jt-color-warning-bg:rgba(240,176,28,.14); --jt-color-warning-border:rgba(240,176,28,.32); --jt-color-warning-text:#F2C55C;
+  --jt-color-error-bg:rgba(225,75,75,.14);    --jt-color-error-border:rgba(225,75,75,.32);    --jt-color-error-text:#F08C8C;
+  --jt-color-info-bg:rgba(126,157,241,.14);   --jt-color-info-border:rgba(126,157,241,.32);   --jt-color-info-text:#9CB4F5;
+
+  --jt-color-table-header-bg:#273449;
+  --jt-color-row-hover:rgba(126,157,241,.08);
+  --jt-color-row-selected:rgba(126,157,241,.14);
+  --jt-color-overlay:rgba(0,0,0,.6);
+}

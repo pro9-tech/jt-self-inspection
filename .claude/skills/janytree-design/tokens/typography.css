@@ -1,0 +1,21 @@
+/* Type scale — seed 14px (Foundation §2-3). */
+:root{
+  --jt-seed-font-size:14px;
+  --jt-fs-2xs:10px; --jt-fs-xs:11px; --jt-fs-sm:12px; --jt-fs-base:14px; --jt-fs-lg:16px;
+  --jt-fs-xl:18px;  --jt-fs-2xl:22px; --jt-fs-3xl:26px; --jt-fs-4xl:30px;
+  --jt-lh-tight:1.35; /* @kind other */ --jt-lh-snug:1.45; /* @kind other */ --jt-lh-normal:1.6; /* @kind other */ --jt-lh-relaxed:1.75; /* @kind other */
+  --jt-fw-regular:400; /* @kind other */ --jt-fw-medium:500; /* @kind other */ --jt-fw-semibold:600; /* @kind other */ --jt-fw-bold:700; /* @kind other */ --jt-fw-extrabold:800; /* @kind other */ --jt-fw-black:900; /* @kind other */
+
+  /* Named roles */
+  --jt-type-display:800 var(--jt-fs-4xl)/var(--jt-lh-tight) var(--jt-font-base);
+  --jt-type-h1:800 var(--jt-fs-3xl)/var(--jt-lh-tight) var(--jt-font-base);
+  --jt-type-h2:700 var(--jt-fs-2xl)/var(--jt-lh-tight) var(--jt-font-base);
+  --jt-type-h3:700 var(--jt-fs-xl)/var(--jt-lh-snug) var(--jt-font-base);
+  --jt-type-body-lg:400 var(--jt-fs-lg)/var(--jt-lh-normal) var(--jt-font-base);
+  --jt-type-body:400 var(--jt-fs-base)/var(--jt-lh-normal) var(--jt-font-base);
+  --jt-type-sm:400 var(--jt-fs-sm)/var(--jt-lh-normal) var(--jt-font-base);
+  --jt-type-caption:400 var(--jt-fs-xs)/var(--jt-lh-snug) var(--jt-font-num);
+
+  /* Floors — never cross (Foundation §4.5-2) */
+  --jt-floor-fs-body:12px; --jt-floor-fs-caption:11px; --jt-floor-lh:1.45; /* @kind other */
+}

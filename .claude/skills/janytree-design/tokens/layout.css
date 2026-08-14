@@ -1,0 +1,10 @@
+/* Layout & breakpoints (Foundation §3). */
+:root{
+  --jt-bp-mobile:639px; /* @kind spacing */ --jt-bp-tablet:1023px; /* @kind spacing */ --jt-bp-desktop:1439px; /* @kind spacing */
+  --jt-container-max:1200px;
+  --jt-sider-width:236px; --jt-sider-collapsed:64px;
+  --jt-header-height:56px;
+  --jt-gutter-desktop:24px; --jt-gutter-tablet:16px; --jt-gutter-mobile:12px;
+  --jt-page-pad-desktop:40px; --jt-page-pad-tablet:24px; --jt-page-pad-mobile:16px;
+  --jt-touch-target:44px;
+}

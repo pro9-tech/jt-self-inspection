@@ -1,0 +1,30 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Forms — Input · Select · Checkbox · Switch · DatePicker · Upload" subtitle="All controls share the 36px control height and accent focus ring" -->
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px;background:var(--jt-color-bg-container);font:var(--jt-type-body)}.grp{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}.lbl{font:var(--jt-type-caption);color:var(--jt-color-text-tertiary);width:100%;margin-bottom:-4px;letter-spacing:.04em;text-transform:uppercase}</style></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const NS = window.JanytreeDesignSystem_bcaf0e;
+
+const {Input,InputNumber,Textarea,Select,Checkbox,Radio,Switch,DatePicker,Upload,Field,FormSection,Button}=NS;
+function Demo(){const [c,setC]=React.useState(true),[s,setS]=React.useState(true),[r,setR]=React.useState('kr');
+return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
+<div>
+ <Field label="품목명" required hint="국문 · 영문 모두 입력"><Input placeholder="예: 리제너 앰플 30ml" prefix="search"/></Field>
+ <Field label="함량"><InputNumber value={0.04} unit="%"/></Field>
+ <Field label="발행 대상 시장"><Select value={r} onChange={e=>setR(e.target.value)} options={[{value:'kr',label:'국내'},{value:'eu',label:'EU'},{value:'cn',label:'中国'}]}/></Field>
+ <Field label="발행일자"><DatePicker value="2026-08-04"/></Field>
+ <Field label="비고" error="필수 항목입니다"><Textarea rows={2} placeholder="특이사항"/></Field>
+ <div className="grp"><Checkbox checked={c} onChange={setC} label="전체 선택"/><Checkbox indeterminate label="일부"/><Radio checked label="국문"/><Switch checked={s} onChange={setS} label="외부 공개"/></div>
+</div>
+<div>
+ <Field label="자료 업로드"><Upload hint="PDF · XLSX · 최대 20MB" progress={64} files={[{name:'MSDS_JT-AMP-0417.pdf',size:'1.2 MB'}]}/></Field>
+ <div style={{display:'flex',justifyContent:'flex-end',gap:12,marginTop:16}}><Button variant="default">취소</Button><Button variant="primary">저장</Button></div>
+</div>
+</div>}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>
