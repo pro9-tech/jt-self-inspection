@@ -418,4 +418,25 @@ body {
   line-height: 1.6 !important;
 }
 
+/* ── 모바일 하단 탭 바 안전 영역 패딩 지원 ── */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── 인쇄 시 서명 란 이미지 스타일 ── */
+.print-only img {
+  max-width: 100%;
+  max-height: 40px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+@media print {
+  /* 인쇄 시 모바일 하단 탭 바 강제 숨김 */
+  .md\:hidden {
+    display: none !important;
+  }
+}
+
 

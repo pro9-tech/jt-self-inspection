@@ -584,8 +584,161 @@ const WeightChart = ({
   );
 };
 
+// 전자 서명 작성을 위한 모달 컴포넌트
+interface SignatureModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (dataUrl: string) => void;
+  title: string;
+}
+
+const SignatureModal = ({ isOpen, onClose, onSave, title }: SignatureModalProps) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+  }, [isOpen]);
+
+  const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!canvasRef.current) return null;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    let clientX, clientY;
+    if ('touches' in e) {
+      if (e.touches.length === 0) return null;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    const x = ((clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((clientY - rect.top) / rect.height) * canvas.height;
+    return { x, y };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const coords = getCoordinates(e);
+    if (!coords) return;
+    
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx) {
+      ctx.beginPath();
+      ctx.moveTo(coords.x, coords.y);
+      setIsDrawing(true);
+    }
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const coords = getCoordinates(e);
+    if (!coords) return;
+
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx) {
+      ctx.lineTo(coords.x, coords.y);
+      ctx.stroke();
+    }
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearCanvas = () => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
+  const handleSave = () => {
+    if (!canvasRef.current) return;
+    const dataUrl = canvasRef.current.toDataURL('image/png');
+    onSave(dataUrl);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm print-hidden">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900">
+          <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-100">{title} 서명하기</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-zinc-250 dark:hover:bg-zinc-800 rounded-full transition-colors cursor-pointer text-zinc-500">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-6 flex flex-col items-center space-y-4 bg-white dark:bg-zinc-900">
+          <p className="text-xs text-zinc-400 self-start">아래 영역에 마우스나 터치로 서명해 주세요.</p>
+          <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl overflow-hidden bg-white">
+            <canvas
+              ref={canvasRef}
+              width={350}
+              height={150}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+              className="cursor-crosshair w-full h-[150px] block touch-none"
+            />
+          </div>
+        </div>
+        <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3">
+          <button
+            onClick={clearCanvas}
+            className="px-5 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl text-xs font-bold hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+          >
+            초기화
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-6 py-2.5 bg-zinc-800 dark:bg-zinc-750 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 dark:hover:bg-zinc-650 transition-colors cursor-pointer"
+          >
+            서명 적용
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // A4 출력 전용 레포트 템플릿 컴포넌트
-const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRecord; isPreview?: boolean }) => {
+const PrintReportTemplate = ({ 
+  record, 
+  isPreview = false,
+  signatures,
+  onSignClick
+}: { 
+  record: FillingRecord; 
+  isPreview?: boolean;
+  signatures?: { writer: string; reviewer: string; approver: string };
+  onSignClick?: (type: 'writer' | 'reviewer' | 'approver' | 'writer-clear' | 'reviewer-clear' | 'approver-clear') => void;
+}) => {
   const year = record.fillingDate ? record.fillingDate.split('-')[0] : new Date().getFullYear();
   
   let classificationTitle = '';
@@ -671,14 +824,77 @@ const PrintReportTemplate = ({ record, isPreview = false }: { record: FillingRec
                     <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">승인</td>
                   </tr>
                   <tr className="h-[45px]">
-                    <td className="border border-black py-1"></td>
-                    <td className="border border-black py-1"></td>
-                    <td className="border border-black py-1"></td>
+                    <td 
+                      className={cn("border border-black py-1 relative select-none", isPreview && "cursor-pointer hover:bg-zinc-50")}
+                      onClick={() => isPreview && onSignClick && onSignClick('writer')}
+                    >
+                      {signatures?.writer ? (
+                        <img src={signatures.writer} alt="작성 서명" className="w-full h-full object-contain max-h-[40px] mx-auto pointer-events-none" />
+                      ) : (
+                        isPreview && <span className="text-[9px] text-zinc-300">클릭 서명</span>
+                      )}
+                    </td>
+                    <td 
+                      className={cn("border border-black py-1 relative select-none", isPreview && "cursor-pointer hover:bg-zinc-50")}
+                      onClick={() => isPreview && onSignClick && onSignClick('reviewer')}
+                    >
+                      {signatures?.reviewer ? (
+                        <img src={signatures.reviewer} alt="검토 서명" className="w-full h-full object-contain max-h-[40px] mx-auto pointer-events-none" />
+                      ) : (
+                        isPreview && <span className="text-[9px] text-zinc-300">클릭 서명</span>
+                      )}
+                    </td>
+                    <td 
+                      className={cn("border border-black py-1 relative select-none", isPreview && "cursor-pointer hover:bg-zinc-50")}
+                      onClick={() => isPreview && onSignClick && onSignClick('approver')}
+                    >
+                      {signatures?.approver ? (
+                        <img src={signatures.approver} alt="승인 서명" className="w-full h-full object-contain max-h-[40px] mx-auto pointer-events-none" />
+                      ) : (
+                        isPreview && <span className="text-[9px] text-zinc-300">클릭 서명</span>
+                      )}
+                    </td>
                   </tr>
                   <tr className="h-[20px]">
-                    <td className="border border-black text-[8px]"></td>
-                    <td className="border border-black text-[8px]"></td>
-                    <td className="border border-black text-[8px]"></td>
+                    <td className="border border-black text-[8px]">
+                      {signatures?.writer && isPreview ? (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSignClick && onSignClick('writer-clear');
+                          }} 
+                          className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
+                        >
+                          지우기
+                        </button>
+                      ) : null}
+                    </td>
+                    <td className="border border-black text-[8px]">
+                      {signatures?.reviewer && isPreview ? (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSignClick && onSignClick('reviewer-clear');
+                          }} 
+                          className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
+                        >
+                          지우기
+                        </button>
+                      ) : null}
+                    </td>
+                    <td className="border border-black text-[8px]">
+                      {signatures?.approver && isPreview ? (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSignClick && onSignClick('approver-clear');
+                          }} 
+                          className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
+                        >
+                          지우기
+                        </button>
+                      ) : null}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -2026,31 +2242,57 @@ function AppContent() {
         )}>
           
           {/* 기본 정보 설정 및 가이드 (드래그 확대/축소 지원) */}
-          <div ref={infoCard.ref} className="resizable-card bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-6 flex-none" style={{ minWidth: '280px', minHeight: '350px', width: '320px', fontSize: `${13 * infoCard.scale}px`, '--control-height': `${36 * infoCard.scale}px` } as React.CSSProperties}>
-            <div className="space-y-4">
+          <div 
+            ref={infoCard.ref} 
+            className="resizable-card bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex-none flex flex-col" 
+            style={{ 
+              minWidth: '280px', 
+              minHeight: isInfoCardCollapsed ? 'auto' : '350px', 
+              height: isInfoCardCollapsed ? '60px' : undefined,
+              width: '320px', 
+              resize: isInfoCardCollapsed ? 'none' : 'both',
+              overflow: isInfoCardCollapsed ? 'hidden' : 'auto',
+              padding: isInfoCardCollapsed ? '16px' : '24px',
+              fontSize: `${13 * infoCard.scale}px`, 
+              '--control-height': `${36 * infoCard.scale}px` 
+            } as React.CSSProperties}
+          >
+            <div className="space-y-4 shrink-0">
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">기본 정보 설정</h2>
-                {record.mainMode === '충진' && (
-                  <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                    {(['충진1', '충진2'] as const).map((sm) => (
-                      <button
-                        key={sm}
-                        onClick={() => setRecord(prev => ({ ...prev, subMode: sm }))}
-                        className={cn(
-                          "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
-                          record.subMode === sm 
-                            ? "bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 shadow-sm" 
-                            : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400"
-                        )}
-                      >
-                        {sm}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {record.mainMode === '충진' && !isInfoCardCollapsed && (
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                      {(['충진1', '충진2'] as const).map((sm) => (
+                        <button
+                          key={sm}
+                          onClick={() => setRecord(prev => ({ ...prev, subMode: sm }))}
+                          className={cn(
+                            "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
+                            record.subMode === sm 
+                              ? "bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 shadow-sm" 
+                              : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400"
+                          )}
+                        >
+                          {sm}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => setIsInfoCardCollapsed(!isInfoCardCollapsed)}
+                    className="p-1 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
+                    title={isInfoCardCollapsed ? "카드 펴기" : "카드 접기"}
+                  >
+                    {isInfoCardCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                  </button>
+                </div>
               </div>
-              
-              <div className="space-y-4">
+            </div>
+            
+            {!isInfoCardCollapsed && (
+              <>
+                <div className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
                     <Package size={12} /> 품목명
@@ -2186,7 +2428,6 @@ function AppContent() {
                   </div>
                 </div>
               </div>
-            </div>
             
             <div className="bg-zinc-800 text-white p-4 rounded-2xl shadow-sm space-y-2 text-xs">
               <div className="flex items-center gap-2 mb-1">
@@ -2199,11 +2440,40 @@ function AppContent() {
                 • <span className="text-red-400 font-bold">빨간색</span>: 규격 이하 / <span className="text-blue-400 font-bold">파란색</span>: 규격 초과
               </p>
             </div>
-          </div>
+          </>
+        )}
+      </div>
 
           {/* 계측 테이블 (드래그 확대/축소 지원) */}
-          <div ref={tableCard.ref} className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col flex-none" style={{ minWidth: '350px', minHeight: '350px', width: '700px', fontSize: `${12 * tableCard.scale}px`, '--control-height': `${36 * tableCard.scale}px` } as React.CSSProperties}>
-            <div className="flex-1 overflow-auto">
+          <div 
+            ref={tableCard.ref} 
+            className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col flex-none" 
+            style={{ 
+              minWidth: '350px', 
+              minHeight: isTableCardCollapsed ? 'auto' : '350px', 
+              height: isTableCardCollapsed ? '60px' : undefined,
+              width: '700px', 
+              resize: isTableCardCollapsed ? 'none' : 'both',
+              overflow: isTableCardCollapsed ? 'hidden' : 'auto',
+              fontSize: `${12 * tableCard.scale}px`, 
+              '--control-height': `${36 * tableCard.scale}px` 
+            } as React.CSSProperties}
+          >
+            {/* 타이틀 헤더 바 */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 select-none bg-zinc-50/50 dark:bg-zinc-900/50">
+              <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">계측 테이블 기록 ({record.mainMode === '포장' ? '포장' : record.subMode})</h2>
+              <button 
+                onClick={() => setIsTableCardCollapsed(!isTableCardCollapsed)}
+                className="p-1 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
+                title={isTableCardCollapsed ? "카드 펴기" : "카드 접기"}
+              >
+                {isTableCardCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+              </button>
+            </div>
+
+            {!isTableCardCollapsed && (
+              <>
+                <div className="flex-1 overflow-auto">
               <table className={cn(
                 "w-full border-collapse text-left",
                 record.mainMode === '포장' ? "min-w-[1200px]" : "min-w-[650px]"
@@ -2427,17 +2697,47 @@ function AppContent() {
                 )}
               </div>
             </div>
-          </div>
+          </>
+        )}
+      </div>
 
           {/* 측정항목 그래프 (충진1 모드일 때만 그래프와 종합 평균 표시) */}
           {record.mainMode === '충진' && record.subMode === '충진1' && (
-            <div ref={graphCard.ref} className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex-none mt-6" style={{ minWidth: '350px', minHeight: '260px', width: '100%', fontSize: `${13 * graphCard.scale}px` } as React.CSSProperties}>
-              <WeightChart 
-                measurements={record.measurements} 
-                standardWeight={record.standardWeight} 
-                underweightTolerance={record.underweightTolerance} 
-                overweightTolerance={record.overweightTolerance} 
-              />
+            <div 
+              ref={graphCard.ref} 
+              className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex-none mt-6 flex flex-col overflow-hidden" 
+              style={{ 
+                minWidth: '350px', 
+                minHeight: isGraphCardCollapsed ? 'auto' : '260px', 
+                height: isGraphCardCollapsed ? '60px' : undefined,
+                width: '100%', 
+                resize: isGraphCardCollapsed ? 'none' : 'both',
+                overflow: isGraphCardCollapsed ? 'hidden' : 'auto',
+                fontSize: `${13 * graphCard.scale}px` 
+              } as React.CSSProperties}
+            >
+              {/* 타이틀 헤더 바 */}
+              <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 select-none bg-zinc-50/50 dark:bg-zinc-900/50">
+                <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 트렌드 그래프</h2>
+                <button 
+                  onClick={() => setIsGraphCardCollapsed(!isGraphCardCollapsed)}
+                  className="p-1 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
+                  title={isGraphCardCollapsed ? "카드 펴기" : "카드 접기"}
+                >
+                  {isGraphCardCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                </button>
+              </div>
+
+              {!isGraphCardCollapsed && (
+                <div className="flex-1 min-h-0">
+                  <WeightChart 
+                    measurements={record.measurements} 
+                    standardWeight={record.standardWeight} 
+                    underweightTolerance={record.underweightTolerance} 
+                    overweightTolerance={record.overweightTolerance} 
+                  />
+                </div>
+              )}
             </div>
           )}
 
