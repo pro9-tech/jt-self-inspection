@@ -1496,6 +1496,10 @@ function AppContent() {
   const tableCard = useCardScale(700, 350);
   const graphCard = useCardScale(1000, 260);
 
+  const [isInfoCardCollapsed, setIsInfoCardCollapsed] = useState(false);
+  const [isTableCardCollapsed, setIsTableCardCollapsed] = useState(false);
+  const [isGraphCardCollapsed, setIsGraphCardCollapsed] = useState(false);
+
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
