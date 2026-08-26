@@ -394,3 +394,28 @@ body {
   }
 }
 
+/* ── 체이스 요청: 모든 글자 크기 확대 (화면 확대 없이 잘 보이도록 비율 확대) ── */
+:root {
+  /* 제니트리 디자인 시스템 폰트 크기 토큰들을 약 18%씩 비례 확대 */
+  --jt-fs-2xs: 11.5px !important;    /* 기존 10px */
+  --jt-fs-xs: 13px !important;       /* 기존 11px */
+  --jt-fs-sm: 14px !important;       /* 기존 12px */
+  --jt-fs-base: 16.5px !important;   /* 기존 14px */
+  --jt-fs-lg: 19px !important;       /* 기존 16px */
+  --jt-fs-xl: 21px !important;       /* 기존 18px */
+  --jt-fs-2xl: 26px !important;      /* 기존 22px */
+  --jt-fs-3xl: 31px !important;      /* 기존 26px */
+  --jt-fs-4xl: 36px !important;      /* 기존 30px */
+}
+
+/* Tailwind rem 비례 크기 조정을 위해 html 루트 폰트 크기 확대 */
+html {
+  font-size: 118% !important;
+}
+
+/* 본문 줄높이 최적화 */
+body {
+  line-height: 1.6 !important;
+}
+
+

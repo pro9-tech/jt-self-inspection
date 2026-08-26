@@ -24,7 +24,9 @@ import {
   Link,
   Layers,
   Moon,
-  Sun
+  Sun,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -40,6 +42,8 @@ import {
   doc, 
   setDoc, 
   deleteDoc,
+  updateDoc,
+  getDoc,
   Timestamp
 } from 'firebase/firestore';
 import { 
@@ -139,7 +143,11 @@ interface FillingRecord {
   measurements: Measurement[];
   createdAt: number;
   uid: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
 }
+
 
 interface ConfigItem {
   name: string;
@@ -148,10 +156,15 @@ interface ConfigItem {
   overweightTolerance: number | null;
 }
 
+interface UserWithEmail {
+  name: string;
+  email: string;
+}
+
 interface AppSettings {
   items: ConfigItem[];
-  operators: string[];
-  verifiers: string[];
+  operators: UserWithEmail[];
+  verifiers: UserWithEmail[];
   scriptUrl?: string;
   uid: string;
 }
@@ -254,7 +267,8 @@ const WeightChart = ({
   underweightTolerance: number | null; 
   overweightTolerance: number | null; 
   }) => {
-  const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; value: number; time: string } | null>(null);
+  const [chartMode, setChartMode] = useState<'average' | 'individual' | 'minMax'>('average');
+  const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; value: number; label: string } | null>(null);
 
   // 전체 평균값 계산
   const validWeights = measurements.flatMap(m => m.vials.filter((v): v is number => v !== null));
@@ -262,7 +276,7 @@ const WeightChart = ({
     ? (validWeights.reduce((a, b) => a + b, 0) / validWeights.length).toFixed(2)
     : '0.00';
 
-  // SVG 그래프 캔버스 사양 설정 (가로 폭을 대폭 넓혀 카드에 꽉 차게 구성)
+  // SVG 그래프 캔버스 사양 설정
   const width = 1000;
   const height = 220;
   const padding = 40;
@@ -290,6 +304,26 @@ const WeightChart = ({
         <div>
           <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 측정 트렌드 및 평균</h3>
           <p className="text-lg font-bold text-zinc-800 dark:text-zinc-100 mt-1">종합 평균: <span className="text-blue-600 dark:text-blue-400 font-extrabold">{average} g</span></p>
+        </div>
+        {/* 체이스 요청: 다양한 그래프 모드 전환 세그먼트 */}
+        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+          {(['average', 'individual', 'minMax'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => {
+                setChartMode(mode);
+                setHoveredPoint(null);
+              }}
+              className={cn(
+                "px-3 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                chartMode === mode 
+                  ? "bg-white dark:bg-zinc-750 text-zinc-800 dark:text-zinc-100 shadow-sm" 
+                  : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-450"
+              )}
+            >
+              {mode === 'average' ? '평균 트렌드' : mode === 'individual' ? '개별 측정값' : '최소/최대 범위'}
+            </button>
+          ))}
         </div>
       </div>
       
@@ -358,58 +392,149 @@ const WeightChart = ({
               </text>
             ))}
 
-            {/* 중량 데이터 꺾은선 그리기 */}
+            {/* 중량 데이터 그리기 */}
             {(() => {
-              const points = measurements.map((m, idx) => {
-                const vals = m.vials.filter((v): v is number => v !== null);
-                if (vals.length === 0) return null;
-                const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                return { x: getX(idx), y: getY(avg) };
-              });
+              if (chartMode === 'average') {
+                const points = measurements.map((m, idx) => {
+                  const vals = m.vials.filter((v): v is number => v !== null);
+                  if (vals.length === 0) return null;
+                  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                  return { x: getX(idx), y: getY(avg), value: avg, time: m.time };
+                });
 
-              const pathD = points
-                .map((p, idx) => (p ? `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}` : ''))
-                .filter(Boolean)
-                .join(' ');
+                const pathD = points
+                  .map((p, idx) => (p ? `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}` : ''))
+                  .filter(Boolean)
+                  .join(' ');
 
-              return (
-                <>
-                  {pathD && (
-                    <path 
-                      d={pathD} 
-                      fill="none" 
-                      stroke="var(--jt-color-accent)" 
-                      strokeWidth="2.5" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                    />
-                  )}
-                  {points.map((p, idx) => {
-                    if (!p) return null;
-                    const m = measurements[idx];
-                    const vals = m.vials.filter((v): v is number => v !== null);
-                    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                    return (
-                      <circle 
-                        key={idx} 
-                        cx={p.x} 
-                        cy={p.y} 
-                        r="6" 
-                        fill="var(--jt-color-accent)" 
-                        stroke="#ffffff" 
-                        strokeWidth="2" 
-                        className="cursor-pointer transition-all hover:r-8"
-                        onMouseEnter={() => {
-                          setHoveredPoint({ x: p.x, y: p.y, value: avg, time: m.time });
-                        }}
-                        onMouseLeave={() => {
-                          setHoveredPoint(null);
-                        }}
+                return (
+                  <>
+                    {pathD && (
+                      <path 
+                        d={pathD} 
+                        fill="none" 
+                        stroke="var(--jt-color-accent)" 
+                        strokeWidth="2.5" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
                       />
-                    );
-                  })}
-                </>
-              );
+                    )}
+                    {points.map((p, idx) => {
+                      if (!p) return null;
+                      return (
+                        <circle 
+                          key={idx} 
+                          cx={p.x} 
+                          cy={p.y} 
+                          r="5" 
+                          fill="var(--jt-color-accent)" 
+                          stroke="#ffffff" 
+                          strokeWidth="2" 
+                          className="cursor-pointer transition-all hover:scale-125"
+                          onMouseEnter={() => {
+                            setHoveredPoint({ x: p.x, y: p.y, value: p.value, label: `${p.time} 평균` });
+                          }}
+                          onMouseLeave={() => {
+                            setHoveredPoint(null);
+                          }}
+                        />
+                      );
+                    })}
+                  </>
+                );
+              } else if (chartMode === 'individual') {
+                // 개별 바이알 측정값들을 점으로 모두 뿌림
+                return (
+                  <>
+                    {measurements.flatMap((m, idx) => {
+                      const x = getX(idx);
+                      const vals = m.vials.filter((v): v is number => v !== null);
+                      return vals.map((val, vIdx) => {
+                        const y = getY(val);
+                        return (
+                          <circle
+                            key={`${idx}-${vIdx}`}
+                            cx={x}
+                            cy={y}
+                            r="4"
+                            fill="var(--jt-color-accent)"
+                            fillOpacity="0.5"
+                            stroke="#ffffff"
+                            strokeWidth="1"
+                            className="cursor-pointer transition-all hover:scale-125"
+                            onMouseEnter={() => {
+                              setHoveredPoint({ x, y, value: val, label: `${m.time} 측정 (#${vIdx + 1})` });
+                            }}
+                            onMouseLeave={() => {
+                              setHoveredPoint(null);
+                            }}
+                          />
+                        );
+                      });
+                    })}
+                  </>
+                );
+              } else if (chartMode === 'minMax') {
+                // 최소-최대 범위 + 평균값 점
+                return (
+                  <>
+                    {measurements.map((m, idx) => {
+                      const x = getX(idx);
+                      const vals = m.vials.filter((v): v is number => v !== null);
+                      if (vals.length === 0) return null;
+                      const min = Math.min(...vals);
+                      const max = Math.max(...vals);
+                      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                      
+                      const yMin = getY(min);
+                      const yMax = getY(max);
+                      const yAvg = getY(avg);
+
+                      return (
+                        <g key={idx}>
+                          {/* 최소-최대 범위 세로선 */}
+                          <line
+                            x1={x}
+                            y1={yMin}
+                            x2={x}
+                            y2={yMax}
+                            stroke="var(--jt-color-accent)"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            opacity="0.35"
+                          />
+                          {/* 범위 경계 가로선 */}
+                          <line x1={x - 4} y1={yMin} x2={x + 4} y2={yMin} stroke="var(--jt-color-accent)" strokeWidth="1.5" opacity="0.5" />
+                          <line x1={x - 4} y1={yMax} x2={x + 4} y2={yMax} stroke="var(--jt-color-accent)" strokeWidth="1.5" opacity="0.5" />
+                          
+                          {/* 평균값 점 */}
+                          <circle
+                            cx={x}
+                            cy={yAvg}
+                            r="5"
+                            fill="var(--jt-color-accent)"
+                            stroke="#ffffff"
+                            strokeWidth="2"
+                            className="cursor-pointer transition-all hover:scale-125"
+                            onMouseEnter={() => {
+                              setHoveredPoint({ 
+                                x, 
+                                y: yAvg, 
+                                value: avg, 
+                                label: `${m.time} 범위 [${min.toFixed(2)}~${max.toFixed(2)}]`
+                              });
+                            }}
+                            onMouseLeave={() => {
+                              setHoveredPoint(null);
+                            }}
+                          />
+                        </g>
+                      );
+                    })}
+                  </>
+                );
+              }
+              return null;
             })()}
 
             {/* SVG 내부에 일치화된 반응형 툴팁 오버레이 */}
@@ -417,9 +542,9 @@ const WeightChart = ({
               <g pointerEvents="none">
                 {/* 툴팁 말풍선 배경 (그림자 효과 포함) */}
                 <rect 
-                  x={hoveredPoint.x - 55} 
+                  x={hoveredPoint.x - 65} 
                   y={hoveredPoint.y - 45} 
-                  width="110" 
+                  width="130" 
                   height="34" 
                   rx="8" 
                   fill="#1F2328" 
@@ -433,7 +558,7 @@ const WeightChart = ({
                   fill="#9DA5AF" 
                   textAnchor="middle"
                 >
-                  {hoveredPoint.time} 측정
+                  {hoveredPoint.label}
                 </text>
                 <text 
                   x={hoveredPoint.x} 
@@ -1215,14 +1340,90 @@ function AppContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  // Auth Listener
+  // --- 체이스 요청: 앱 내부 알림 모달 및 관리자 모드 상태 정의 ── //
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    title: string;
+    type: 'success' | 'error' | 'info';
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    message: '',
+    title: '알림',
+    type: 'info',
+  });
+
+  const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'info', title: string = '알림', onConfirm?: () => void) => {
+    setAlertModal({
+      isOpen: true,
+      message,
+      title,
+      type,
+      onConfirm,
+    });
+  };
+
+
+  // Auth Listener (체이스 요청: 구글 로그인 이메일 권한 검증 기능 탑재)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setIsAuthReady(true);
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (u) {
-        setRecord(prev => ({ ...prev, uid: u.uid }));
-        setSettings(prev => ({ ...prev, uid: u.uid }));
+        // 1. 관리자 계정은 무조건 통과
+        if (u.email === 'pro9@janytree.com') {
+          setUser(u);
+          setIsAuthReady(true);
+          setRecord(prev => ({ ...prev, uid: u.uid }));
+          setSettings(prev => ({ ...prev, uid: u.uid }));
+          return;
+        }
+
+        // 2. 일반 사용자의 경우 등록된 측정자/확인자 이메일 목록 확인
+        try {
+          const snap = await getDoc(doc(db, 'settings', 'global'));
+          let isAllowed = false;
+          if (snap.exists()) {
+            const data = snap.data();
+            const ops = data.operators || [];
+            const vers = data.verifiers || [];
+
+            isAllowed = [...ops, ...vers].some((item: any) => {
+              if (typeof item === 'string') return false; // 이름만 적힌 레거시는 매칭 통과 불가
+              const email = item?.email || '';
+              return email.toLowerCase().trim() === u.email.toLowerCase().trim();
+            });
+          }
+
+          if (isAllowed) {
+            setUser(u);
+            setIsAuthReady(true);
+            setRecord(prev => ({ ...prev, uid: u.uid }));
+            setSettings(prev => ({ ...prev, uid: u.uid }));
+          } else {
+            await signOut(auth);
+            setUser(null);
+            setIsAuthReady(true);
+            showAlert(
+              `권한이 없습니다. 등록되지 않은 구글 계정(${u.email})입니다.\n관리자(pro9@janytree.com)에게 문의하여 사용자/확인자 이메일 등록을 진행해 주세요.`,
+              "error",
+              "로그인 제한"
+            );
+          }
+        } catch (err) {
+          console.error("Permission check failed:", err);
+          await signOut(auth);
+          setUser(null);
+          setIsAuthReady(true);
+          showAlert(
+            "로그인 권한을 확인하는 중에 실패하였습니다. 네트워크 상태를 확인하시고 다시 로그인해주세요.",
+            "error",
+            "로그인 실패"
+          );
+        }
+      } else {
+        setUser(null);
+        setIsAuthReady(true);
       }
     });
     return () => unsubscribe();
@@ -1239,20 +1440,39 @@ function AppContent() {
       } catch (error: any) {
         console.error("Redirect login failed:", error);
         if (error.code === 'auth/unauthorized-domain') {
-          alert('이 도메인은 Firebase 콘솔에서 승인되지 않았습니다. Firebase 콘솔 > Authentication > Settings > Authorized domains에 현재 도메인을 추가해주세요.');
+          showAlert('이 도메인은 Firebase 콘솔에서 승인되지 않았습니다. Firebase 콘솔 > Authentication > Settings > Authorized domains에 현재 도메인을 추가해주세요.', 'error', '승인되지 않은 도메인');
         }
       }
     };
     handleRedirect();
   }, []);
 
-  // Settings Listener
+  // Settings Listener (체이스 요청: 기존 문자열 리스트 데이터와의 하위 호환 노멀라이징 처리 추가)
   useEffect(() => {
     if (!user || !isAuthReady) return;
 
     const unsubscribe = onSnapshot(doc(db, 'settings', 'global'), (snapshot) => {
       if (snapshot.exists()) {
-        setSettings(snapshot.data() as AppSettings);
+        const data = snapshot.data();
+        
+        // 레거시 string[] 호환 처리 함수
+        const normalizeUserList = (list: any[]) => {
+          return (list || []).map(item => {
+            if (typeof item === 'string') {
+              return { name: item, email: '' };
+            }
+            return { name: item?.name || '', email: item?.email || '' };
+          });
+        };
+
+        setSettings({
+          ...data,
+          items: data.items || [],
+          operators: normalizeUserList(data.operators),
+          verifiers: normalizeUserList(data.verifiers),
+          scriptUrl: data.scriptUrl || '',
+          uid: data.uid || '',
+        } as AppSettings);
       }
     });
 
@@ -1346,7 +1566,7 @@ function AppContent() {
     // Basic URL validation to prevent common mistakes
     if (!scriptUrl.startsWith('https://script.google.com/')) {
       console.error('Invalid Google Script URL:', scriptUrl);
-      alert('구글 시트 URL이 올바르지 않습니다. "https://script.google.com/..."으로 시작하는 웹 앱 URL을 입력해주세요.');
+      showAlert('구글 시트 URL이 올바르지 않습니다. "https://script.google.com/..."으로 시작하는 웹 앱 URL을 입력해주세요.', 'error', '설정 오류');
       return;
     }
 
@@ -1552,7 +1772,7 @@ function AppContent() {
 
   const saveRecord = async () => {
     if (!user) {
-      alert('저장하려면 로그인이 필요합니다.');
+      showAlert('저장하려면 구글 로그인이 필요합니다.', 'error', '로그인 필요');
       return;
     }
 
@@ -1578,7 +1798,7 @@ function AppContent() {
         console.error('Supabase sync failed:', supabaseErr);
       }
       
-      alert('기록이 클라우드에 저장되었습니다.');
+      showAlert('기록이 성공적으로 클라우드에 저장되었습니다.', 'success', '저장 완료');
       resetForm();
     } catch (error: any) {
       handleFirestoreError(error, OperationType.WRITE, `records/${record.id}`);
@@ -1598,7 +1818,7 @@ function AppContent() {
     try {
       await setDoc(doc(db, 'settings', 'global'), newSettings);
       setSettings(newSettings);
-      alert('설정이 성공적으로 저장되었습니다.');
+      showAlert('설정이 성공적으로 저장되었습니다.', 'success', '설정 저장');
     } catch (error: any) {
       handleFirestoreError(error, OperationType.WRITE, `settings/${user.uid}`);
     } finally {
@@ -1724,7 +1944,7 @@ function AppContent() {
             <button 
               onClick={() => {
                 if (!user) {
-                  alert('환경설정을 변경하려면 먼저 구글 로그인을 해주세요.');
+                  showAlert('환경설정을 변경하려면 먼저 구글 로그인을 해주세요.', 'info', '로그인 필요');
                   return;
                 }
                 setShowSettings(true);
@@ -1753,7 +1973,7 @@ function AppContent() {
 
             <button 
               onClick={saveRecord}
-              disabled={isSaving || !user}
+              disabled={isSaving || !user || record.isDeleted}
               className="flex items-center gap-3 px-4 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md w-full text-left cursor-pointer"
             >
               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -1788,8 +2008,22 @@ function AppContent() {
           </p>
         </header>
 
+        {/* 체이스 요청: 삭제된 기록 안내 배지 */}
+        {record.isDeleted && (
+          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/50 p-4 rounded-2xl flex items-center gap-3 text-red-700 dark:text-red-400">
+            <AlertCircle size={20} className="shrink-0" />
+            <div>
+              <p className="text-xs font-bold">이 기록은 삭제된 상태입니다.</p>
+              <p className="text-[10px] opacity-80 mt-0.5">삭제된 데이터는 영구보관 중이며, 수정이나 저장을 할 수 없습니다.</p>
+            </div>
+          </div>
+        )}
+
         {/* 대시보드 레이아웃 (확대/축소 카드로 래핑) */}
-        <div className="flex flex-wrap gap-6 items-start w-full">
+        <div className={cn(
+          "flex flex-wrap gap-6 items-start w-full relative",
+          record.isDeleted && "opacity-75 pointer-events-none select-none"
+        )}>
           
           {/* 기본 정보 설정 및 가이드 (드래그 확대/축소 지원) */}
           <div ref={infoCard.ref} className="resizable-card bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-6 flex-none" style={{ minWidth: '280px', minHeight: '350px', width: '320px', fontSize: `${13 * infoCard.scale}px`, '--control-height': `${36 * infoCard.scale}px` } as React.CSSProperties}>
@@ -1928,9 +2162,10 @@ function AppContent() {
                       className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                     >
                       <option value="">선택...</option>
-                      {(settings.verifiers || []).map((ver, i) => (
-                        <option key={i} value={ver}>{ver}</option>
-                      ))}
+                      {(settings.verifiers || []).map((verItem, i) => {
+                        const name = typeof verItem === 'string' ? verItem : (verItem?.name || '');
+                        return <option key={i} value={name}>{name}</option>;
+                      })}
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -1943,9 +2178,10 @@ function AppContent() {
                       className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                     >
                       <option value="">선택...</option>
-                      {(settings.operators || []).map((op, i) => (
-                        <option key={i} value={op}>{op}</option>
-                      ))}
+                      {(settings.operators || []).map((opItem, i) => {
+                        const name = typeof opItem === 'string' ? opItem : (opItem?.name || '');
+                        return <option key={i} value={name}>{name}</option>;
+                      })}
                     </select>
                   </div>
                 </div>
@@ -2219,9 +2455,26 @@ function AppContent() {
               className="bg-white w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col"
             >
               <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-bold text-zinc-800">환경설정</h2>
-                  <p className="text-xs text-zinc-400 mt-1 uppercase tracking-widest font-mono">Application Settings</p>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">환경설정</h2>
+                    <p className="text-xs text-zinc-400 mt-1 uppercase tracking-widest font-mono">Application Settings</p>
+                  </div>
+                  {/* 체이스 요청: pro9@janytree.com 계정 로그인 시 자물쇠(관리자 모드) 활성화 */}
+                  {user?.email === 'pro9@janytree.com' && (
+                    <button
+                      onClick={() => setIsAdminMode(prev => !prev)}
+                      className={cn(
+                        "p-2 rounded-xl border transition-all cursor-pointer",
+                        isAdminMode 
+                          ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30" 
+                          : "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                      )}
+                      title={isAdminMode ? "관리자 설정 잠금" : "관리자 설정 잠금 해제"}
+                    >
+                      {isAdminMode ? <Unlock size={16} /> : <Lock size={16} />}
+                    </button>
+                  )}
                 </div>
                 <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors cursor-pointer">
                   <X size={20} />
@@ -2359,114 +2612,151 @@ function AppContent() {
                       </div>
                     </section>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <section className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
-                            <User size={16} /> 측정자 (Verifier)
-                          </h3>
-                          <button 
-                            onClick={() => {
-                              const newVerifiers = [...(settings.verifiers || []), ''];
-                              setSettings({ ...settings, verifiers: newVerifiers });
-                            }}
-                            className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
-                          >
-                            <Plus size={14} /> 측정자 추가
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {(settings.verifiers || []).map((ver, idx) => (
-                            <div key={idx} className="relative group flex items-center gap-2">
-                              <input 
-                                type="text" 
-                                value={ver} 
-                                onChange={(e) => {
-                                  const newVers = [...settings.verifiers];
-                                  newVers[idx] = e.target.value;
-                                  setSettings({ ...settings, verifiers: newVers });
-                                }}
-                                placeholder="측정자 성명"
-                                className="flex-1 bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3"
-                              />
+                    {/* 체이스 요청: 관리자 모드가 켜진 자물쇠 해제 상태에서만 노출 */}
+                    {isAdminMode && (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <section className="space-y-4">
+                            <div className="flex justify-between items-center">
+                              <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-2">
+                                <User size={16} /> 측정자 (Verifier)
+                              </h3>
                               <button 
                                 onClick={() => {
-                                  const newVers = settings.verifiers.filter((_, i) => i !== idx);
-                                  setSettings({ ...settings, verifiers: newVers });
+                                  const newVerifiers = [...(settings.verifiers || []), { name: '', email: '' }];
+                                  setSettings({ ...settings, verifiers: newVerifiers });
                                 }}
-                                className="p-2 text-zinc-300 hover:text-red-500 transition-colors cursor-pointer"
+                                className="text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-350 flex items-center gap-1 cursor-pointer"
                               >
-                                <Trash2 size={16} />
+                                <Plus size={14} /> 측정자 추가
                               </button>
                             </div>
-                          ))}
-                        </div>
-                      </section>
-                      
-                      <section className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
-                            <User size={16} /> 확인자 (Operator)
-                          </h3>
-                          <button 
-                            onClick={() => {
-                              const newOperators = [...(settings.operators || []), ''];
-                              setSettings({ ...settings, operators: newOperators });
-                            }}
-                            className="text-xs font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
-                          >
-                            <Plus size={14} /> 확인자 추가
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {(settings.operators || []).map((op, idx) => (
-                            <div key={idx} className="relative group flex items-center gap-2">
-                              <input 
-                                type="text" 
-                                value={op} 
-                                onChange={(e) => {
-                                  const newOps = [...settings.operators];
-                                  newOps[idx] = e.target.value;
-                                  setSettings({ ...settings, operators: newOps });
-                                }}
-                                placeholder="확인자 성명"
-                                className="flex-1 bg-zinc-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3"
-                              />
+                            <div className="space-y-2">
+                              {(settings.verifiers || []).map((verItem, idx) => {
+                                const ver = typeof verItem === 'string' ? { name: verItem, email: '' } : (verItem || { name: '', email: '' });
+                                return (
+                                  <div key={idx} className="relative group flex items-center gap-2">
+                                    <input 
+                                      type="text" 
+                                      value={ver.name} 
+                                      onChange={(e) => {
+                                        const newVers = [...settings.verifiers];
+                                        const cur = typeof newVers[idx] === 'string' ? { name: newVers[idx] as string, email: '' } : (newVers[idx] as { name: string; email: string });
+                                        newVers[idx] = { name: e.target.value, email: cur.email };
+                                        setSettings({ ...settings, verifiers: newVers });
+                                      }}
+                                      placeholder="측정자 성명"
+                                      className="w-[120px] bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3 text-zinc-800 dark:text-zinc-100"
+                                    />
+                                    <input 
+                                      type="email" 
+                                      value={ver.email || ''} 
+                                      onChange={(e) => {
+                                        const newVers = [...settings.verifiers];
+                                        const cur = typeof newVers[idx] === 'string' ? { name: newVers[idx] as string, email: '' } : (newVers[idx] as { name: string; email: string });
+                                        newVers[idx] = { name: cur.name, email: e.target.value };
+                                        setSettings({ ...settings, verifiers: newVers });
+                                      }}
+                                      placeholder="구글 이메일"
+                                      className="flex-1 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3 text-zinc-800 dark:text-zinc-100"
+                                    />
+                                    <button 
+                                      onClick={() => {
+                                        const newVers = settings.verifiers.filter((_, i) => i !== idx);
+                                        setSettings({ ...settings, verifiers: newVers });
+                                      }}
+                                      className="p-2 text-zinc-300 hover:text-red-500 transition-colors cursor-pointer shrink-0"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </section>
+                          
+                          <section className="space-y-4">
+                            <div className="flex justify-between items-center">
+                              <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-2">
+                                <User size={16} /> 확인자 (Operator)
+                              </h3>
                               <button 
                                 onClick={() => {
-                                  const newOps = settings.operators.filter((_, i) => i !== idx);
-                                  setSettings({ ...settings, operators: newOps });
+                                  const newOperators = [...(settings.operators || []), { name: '', email: '' }];
+                                  setSettings({ ...settings, operators: newOperators });
                                 }}
-                                className="p-2 text-zinc-300 hover:text-red-500 transition-colors cursor-pointer"
+                                className="text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-350 flex items-center gap-1 cursor-pointer"
                               >
-                                <Trash2 size={16} />
+                                <Plus size={14} /> 확인자 추가
                               </button>
                             </div>
-                          ))}
+                            <div className="space-y-2">
+                              {(settings.operators || []).map((opItem, idx) => {
+                                const op = typeof opItem === 'string' ? { name: opItem, email: '' } : (opItem || { name: '', email: '' });
+                                return (
+                                  <div key={idx} className="relative group flex items-center gap-2">
+                                    <input 
+                                      type="text" 
+                                      value={op.name} 
+                                      onChange={(e) => {
+                                        const newOps = [...settings.operators];
+                                        const cur = typeof newOps[idx] === 'string' ? { name: newOps[idx] as string, email: '' } : (newOps[idx] as { name: string; email: string });
+                                        newOps[idx] = { name: e.target.value, email: cur.email };
+                                        setSettings({ ...settings, operators: newOps });
+                                      }}
+                                      placeholder="확인자 성명"
+                                      className="w-[120px] bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3 text-zinc-800 dark:text-zinc-100"
+                                    />
+                                    <input 
+                                      type="email" 
+                                      value={op.email || ''} 
+                                      onChange={(e) => {
+                                        const newOps = [...settings.operators];
+                                        const cur = typeof newOps[idx] === 'string' ? { name: newOps[idx] as string, email: '' } : (newOps[idx] as { name: string; email: string });
+                                        newOps[idx] = { name: cur.name, email: e.target.value };
+                                        setSettings({ ...settings, operators: newOps });
+                                      }}
+                                      placeholder="구글 이메일"
+                                      className="flex-1 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3 text-zinc-800 dark:text-zinc-100"
+                                    />
+                                    <button 
+                                      onClick={() => {
+                                        const newOps = settings.operators.filter((_, i) => i !== idx);
+                                        setSettings({ ...settings, operators: newOps });
+                                      }}
+                                      className="p-2 text-zinc-300 hover:text-red-500 transition-colors cursor-pointer shrink-0"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </section>
                         </div>
-                      </section>
-                    </div>
 
-                    <section className="p-6 border-t border-zinc-100 space-y-4">
-                      <h3 className="text-sm font-bold text-zinc-700 flex items-center gap-2">
-                        <Link size={16} /> 구글 시트 동기화 설정
-                      </h3>
-                      <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100 space-y-2">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">구글 앱스스크립트(웹 앱) URL</label>
-                          <input 
-                            type="text" 
-                            value={settings.scriptUrl || ''} 
-                            onChange={(e) => setSettings({ ...settings, scriptUrl: e.target.value })}
-                            placeholder="https://script.google.com/macros/s/.../exec"
-                            className="w-full bg-white border border-zinc-200 rounded-lg text-sm focus:ring-2 focus:ring-zinc-100 p-2"
-                          />
-                        </div>
-                        <p className="text-[10px] text-zinc-400">
-                          * 웹 앱 URL 입력 시 구글 스프레드시트에 자동 동기화됩니다.
-                        </p>
-                      </div>
-                    </section>
+                        <section className="p-6 border-t border-zinc-100 dark:border-zinc-800 space-y-4">
+                          <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-200 flex items-center gap-2">
+                            <Link size={16} /> 구글 시트 동기화 설정
+                          </h3>
+                          <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 space-y-2">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">구글 앱스스크립트(웹 앱) URL</label>
+                              <input 
+                                type="text" 
+                                value={settings.scriptUrl || ''} 
+                                onChange={(e) => setSettings({ ...settings, scriptUrl: e.target.value })}
+                                placeholder="https://script.google.com/macros/s/.../exec"
+                                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:ring-2 focus:ring-zinc-100 dark:focus:ring-zinc-800 p-2 text-zinc-800 dark:text-zinc-100"
+                              />
+                            </div>
+                            <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                              * 웹 앱 URL 입력 시 구글 스프레드시트에 자동 동기화됩니다.
+                            </p>
+                          </div>
+                        </section>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -2594,20 +2884,33 @@ function AppContent() {
                         <button
                           onClick={() => !deletingId && loadRecord(h)}
                           className={cn(
-                            "w-full text-left p-4 border border-zinc-200 rounded-2xl hover:border-zinc-400 hover:bg-zinc-50 transition-all group relative cursor-pointer bg-white",
-                            deletingId === h.id && "border-red-200 bg-red-50/20"
+                            "w-full text-left p-4 border border-zinc-200 rounded-2xl hover:border-zinc-400 hover:bg-zinc-50 transition-all group relative cursor-pointer bg-white dark:bg-zinc-900",
+                            deletingId === h.id && "border-red-200 bg-red-50/20 dark:bg-red-950/20",
+                            h.isDeleted && "opacity-60 bg-zinc-50/50 dark:bg-zinc-900/50"
                           )}
                         >
                           <div className="flex justify-between items-start">
                             <div className="flex flex-col">
-                              <span className="text-sm font-bold text-zinc-700 group-hover:text-zinc-900 truncate max-w-[150px]">{h.itemName || '품목명 없음'}</span>
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "text-sm font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 truncate max-w-[140px]",
+                                  h.isDeleted && "line-through text-zinc-400 dark:text-zinc-500"
+                                )}>
+                                  {h.itemName || '품목명 없음'}
+                                </span>
+                                {h.isDeleted && (
+                                  <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 text-[9px] font-extrabold rounded">
+                                    삭제됨
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex gap-1 mt-1">
                                 {h.mainMode === '포장' ? (
-                                  <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[9px] font-bold rounded uppercase">포장</span>
+                                  <span className="px-1.5 py-0.5 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-[9px] font-bold rounded uppercase">포장</span>
                                 ) : (
                                   <span className={cn(
                                     "px-1.5 py-0.5 text-[9px] font-bold rounded uppercase",
-                                    h.subMode === '충진2' ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"
+                                    h.subMode === '충진2' ? "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400" : "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
                                   )}>
                                     {h.subMode || '충진1'}
                                   </span>
@@ -2615,15 +2918,15 @@ function AppContent() {
                               </div>
                             </div>
                             <div className="flex flex-col items-end shrink-0 text-right">
-                              <span className="text-[9px] font-bold text-zinc-500">
+                              <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400">
                                 {h.mainMode === '포장' ? '포장일' : '충진일'}: {h.fillingDate || '-'}
                               </span>
                               <span className="text-[9px] font-mono text-zinc-400 mt-0.5">{format(h.createdAt, 'yyyy/MM/dd HH:mm')}</span>
                             </div>
                           </div>
-                          <div className="text-xs text-zinc-500 mt-2 font-mono">Lot: {h.lotNumber || '-'}</div>
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 font-mono">Lot: {h.lotNumber || '-'}</div>
                           
-                          {deletingId !== h.id && (
+                          {!h.isDeleted && deletingId !== h.id && (
                             <div 
                               onClick={(e) => {
                                   e.stopPropagation();
@@ -2638,13 +2941,19 @@ function AppContent() {
 
                         <AnimatePresence>
                           {deletingId === h.id && (
-                            <div className="absolute inset-0 bg-white/95 backdrop-blur-[1px] rounded-2xl flex items-center justify-center gap-2 p-2 z-10">
+                            <div className="absolute inset-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-[1px] rounded-2xl flex items-center justify-center gap-2 p-2 z-10">
                               <button 
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   try {
-                                    await deleteDoc(doc(db, 'records', h.id));
-                                    if (record.id === h.id) resetForm();
+                                    await updateDoc(doc(db, 'records', h.id), {
+                                      isDeleted: true,
+                                      deletedAt: new Date().toISOString(),
+                                      deletedBy: user?.email || ''
+                                    });
+                                    if (record.id === h.id) {
+                                      setRecord(prev => ({ ...prev, isDeleted: true }));
+                                    }
                                     setDeletingId(null);
                                   } catch (error) {
                                     handleFirestoreError(error, OperationType.DELETE, `records/${h.id}`);
@@ -2659,7 +2968,7 @@ function AppContent() {
                                   e.stopPropagation();
                                   setDeletingId(null);
                                 }}
-                                className="px-4 py-2 bg-zinc-200 text-zinc-600 text-[10px] font-bold rounded-xl hover:bg-zinc-300 transition-colors"
+                                className="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold rounded-xl hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
                               >
                                 취소
                               </button>
@@ -2728,7 +3037,57 @@ function AppContent() {
       {/* ── 6. 인쇄 시에만 나타나는 프린트 템플릿 컴포넌트 ── */}
       <PrintReportTemplate record={record} />
 
+      {/* ── 체이스 요청: 공용 내부 알림 모달 (alertModal) ── */}
+      <AnimatePresence>
+        {alertModal.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm print-hidden">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-6 flex flex-col items-center text-center space-y-4">
+                <div className={cn(
+                  "p-3 rounded-full",
+                  alertModal.type === 'success' ? "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400" :
+                  alertModal.type === 'error' ? "bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400" :
+                  "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
+                )}>
+                  {alertModal.type === 'success' ? (
+                    <CheckCircle2 size={32} />
+                  ) : alertModal.type === 'error' ? (
+                    <AlertCircle size={32} />
+                  ) : (
+                    <AlertCircle size={32} />
+                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-100">{alertModal.title}</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed">{alertModal.message}</p>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800 flex justify-center">
+                <button
+                  onClick={() => {
+                    const confirmFn = alertModal.onConfirm;
+                    setAlertModal(prev => ({ ...prev, isOpen: false }));
+                    if (confirmFn) confirmFn();
+                  }}
+                  className="px-8 py-2 bg-zinc-800 dark:bg-zinc-700 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 dark:hover:bg-zinc-600 transition-colors cursor-pointer"
+                >
+                  확인
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
+
   );
 }
 
