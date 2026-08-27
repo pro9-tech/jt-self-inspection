@@ -2906,49 +2906,49 @@ function AppContent() {
           </>
         )}
       </div>
+    </div>
 
-          {/* 측정항목 그래프 (충진1 모드일 때만 그래프와 종합 평균 표시) */}
-          {record.mainMode === '충진' && record.subMode === '충진1' && (
-            <div 
-              ref={graphCard.ref} 
-              className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex-none mt-6 flex flex-col overflow-hidden" 
-              style={{ 
-                minWidth: '350px', 
-                minHeight: isGraphCardCollapsed ? 'auto' : '260px', 
-                height: isGraphCardCollapsed ? '60px' : undefined,
-                width: '100%', 
-                resize: isGraphCardCollapsed ? 'none' : 'both',
-                overflow: isGraphCardCollapsed ? 'hidden' : 'auto',
-                fontSize: `${13 * graphCard.scale}px` 
-              } as React.CSSProperties}
-            >
-              {/* 타이틀 헤더 바 */}
-              <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 select-none bg-zinc-50/50 dark:bg-zinc-900/50">
-                <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 트렌드 그래프</h2>
-                <button 
-                  onClick={() => setIsGraphCardCollapsed(!isGraphCardCollapsed)}
-                  className="p-1 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
-                  title={isGraphCardCollapsed ? "카드 펴기" : "카드 접기"}
-                >
-                  {isGraphCardCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                </button>
-              </div>
-
-              {!isGraphCardCollapsed && (
-                <div className="flex-1 min-h-0">
-                  <WeightChart 
-                    measurements={record.measurements} 
-                    standardWeight={record.standardWeight} 
-                    underweightTolerance={record.underweightTolerance} 
-                    overweightTolerance={record.overweightTolerance} 
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
+    {/* 측정항목 그래프 (충진1 모드일 때만 그래프와 종합 평균 표시) */}
+    {record.mainMode === '충진' && record.subMode === '충진1' && (
+      <div 
+        ref={graphCard.ref} 
+        className="resizable-card bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex-none mt-6 flex flex-col overflow-hidden" 
+        style={{ 
+          minWidth: '350px', 
+          minHeight: isGraphCardCollapsed ? 'auto' : '260px', 
+          height: isGraphCardCollapsed ? '60px' : undefined,
+          width: '100%', 
+          resize: isGraphCardCollapsed ? 'none' : 'both',
+          overflow: isGraphCardCollapsed ? 'hidden' : 'auto',
+          fontSize: `${13 * graphCard.scale}px` 
+        } as React.CSSProperties}
+      >
+        {/* 타이틀 헤더 바 */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 select-none bg-zinc-50/50 dark:bg-zinc-900/50">
+          <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 트렌드 그래프</h2>
+          <button 
+            onClick={() => setIsGraphCardCollapsed(!isGraphCardCollapsed)}
+            className="p-1 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
+            title={isGraphCardCollapsed ? "카드 펴기" : "카드 접기"}
+          >
+            {isGraphCardCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
         </div>
-      </main>
+
+        {!isGraphCardCollapsed && (
+          <div className="flex-1 min-h-0">
+            <WeightChart 
+              measurements={record.measurements} 
+              standardWeight={record.standardWeight} 
+              underweightTolerance={record.underweightTolerance} 
+              overweightTolerance={record.overweightTolerance} 
+            />
+          </div>
+        )}
+      </div>
+    )}
+
+  </main>
 
       {/* ── 3. 설정 모달 ── */}
       <AnimatePresence>
