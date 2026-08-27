@@ -15,6 +15,8 @@ import {
   Percent,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   LogIn,
   LogOut,
   Loader2,
@@ -1497,6 +1499,7 @@ function AppContent() {
   const tableCard = useCardScale(850, 350);
   const graphCard = useCardScale(1150, 260);
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isInfoCardCollapsed, setIsInfoCardCollapsed] = useState(false);
   const [isTableCardCollapsed, setIsTableCardCollapsed] = useState(false);
   const [isGraphCardCollapsed, setIsGraphCardCollapsed] = useState(false);
@@ -2212,43 +2215,73 @@ function AppContent() {
     <div className="min-h-screen flex bg-[var(--jt-color-bg-layout)] text-[var(--jt-color-text)] font-sans">
       
       {/* ── 1. 왼쪽 세로형 사이드바 (인쇄 시 숨김) ── */}
-      <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-[var(--jt-color-border)] dark:border-zinc-800 p-6 flex flex-col gap-6 shrink-0 print-hidden justify-between">
-        <div className="space-y-6">
-          {/* 로고 영역 (현 위치 유지) */}
-          <div className="flex items-center justify-center cursor-pointer select-none pb-4 border-b border-[var(--jt-color-border)] dark:border-zinc-800 w-full" onClick={handleGoDashboard} title="대시보드로 이동">
-            <img 
-              src="/brand/logo/logo-h.svg?v=2" 
-              alt="Zenitry Logo" 
-              className="h-[26px] w-auto object-contain" 
-            />
+      <aside className={cn(
+        "bg-white dark:bg-zinc-900 border-r border-[var(--jt-color-border)] dark:border-zinc-800 flex flex-col gap-6 shrink-0 print-hidden justify-between transition-all duration-300",
+        isSidebarCollapsed ? "w-20 p-4" : "w-64 p-6"
+      )}>
+        <div className="space-y-6 w-full">
+          {/* 로고 및 접기 토글 영역 */}
+          <div className="flex items-center justify-between pb-4 border-b border-[var(--jt-color-border)] dark:border-zinc-800 w-full select-none">
+            {!isSidebarCollapsed && (
+              <img 
+                src={isDarkMode ? "/brand/logo/logo-h-light.svg?v=2" : "/brand/logo/logo-h.svg?v=2"} 
+                alt="Zenitry Logo" 
+                className="h-[26px] w-auto object-contain cursor-pointer" 
+                onClick={handleGoDashboard}
+                title="대시보드로 이동"
+              />
+            )}
+            {isSidebarCollapsed && (
+              <img 
+                src={isDarkMode ? "/brand/logo/logo-mark-light.svg?v=2" : "/brand/logo/logo-mark.svg?v=2"} 
+                alt="Zenitry Logo" 
+                className="h-[26px] w-auto object-contain cursor-pointer mx-auto" 
+                onClick={handleGoDashboard}
+                title="대시보드로 이동"
+              />
+            )}
+            <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={cn(
+                "p-1 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center",
+                isSidebarCollapsed && "mt-2 mx-auto"
+              )}
+              title={isSidebarCollapsed ? "메뉴 펴기" : "메뉴 접기"}
+            >
+              {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
 
           {/* 측정 분류 모드 */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">분류 모드</label>
-            <div className="flex bg-[var(--jt-color-primary-bg)] p-1 rounded-xl w-full">
+          <div className="space-y-2 w-full">
+            {!isSidebarCollapsed && <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">분류 모드</label>}
+            <div className={cn(
+              "flex bg-[var(--jt-color-primary-bg)] p-1 rounded-xl w-full",
+              isSidebarCollapsed ? "flex-col gap-1" : "flex-row"
+            )}>
               {(['충진', '포장'] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setRecord(prev => ({ ...prev, mainMode: m }))}
                   className={cn(
-                    "flex-1 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    "py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    isSidebarCollapsed ? "w-full text-center py-2" : "flex-1",
                     record.mainMode === m 
-                      ? "bg-white text-zinc-800 shadow-sm" 
+                      ? "bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 shadow-sm" 
                       : "text-zinc-500 hover:text-zinc-700"
                   )}
                 >
-                  {m}
+                  {isSidebarCollapsed ? m.charAt(0) : m}
                 </button>
               ))}
             </div>
           </div>
 
           {/* 메뉴 세로 리스트 */}
-          <nav className="flex flex-col gap-2">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">메뉴 목록</label>
+          <nav className="flex flex-col gap-2 w-full">
+            {!isSidebarCollapsed && <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">메뉴 목록</label>}
             
-            {user && (
+            {user && !isSidebarCollapsed && (
               <div className="flex items-center gap-2 px-3 py-2 bg-zinc-50 border border-zinc-100 rounded-xl text-xs font-medium text-zinc-600 mb-2 truncate">
                 {user.photoURL ? (
                   <img src={user.photoURL} alt="" className="w-5 h-5 rounded-full shrink-0" referrerPolicy="no-referrer" />
@@ -2260,31 +2293,54 @@ function AppContent() {
                 <span className="truncate">{user.displayName} 님</span>
               </div>
             )}
+            {user && isSidebarCollapsed && (
+              <div className="flex justify-center mb-2" title={`${user.displayName} 님`}>
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full border border-zinc-200 shrink-0" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-zinc-200 flex items-center justify-center text-xs text-zinc-500 font-bold shrink-0">
+                    {user.displayName?.charAt(0) || 'U'}
+                  </div>
+                )}
+              </div>
+            )}
 
             {user ? (
               <button 
                 onClick={handleLogout}
-                className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
+                className={cn(
+                  "flex items-center bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm cursor-pointer",
+                  isSidebarCollapsed ? "justify-center p-2.5 w-10 h-10 mx-auto" : "gap-3 px-4 py-2.5 w-full text-left"
+                )}
+                title="로그아웃"
               >
-                <LogOut size={14} className="text-zinc-400" />
-                로그아웃
+                <LogOut size={14} className="text-zinc-400 shrink-0" />
+                {!isSidebarCollapsed && "로그아웃"}
               </button>
             ) : (
               <button 
                 onClick={handleLogin}
-                className="flex items-center gap-3 px-4 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 transition-all shadow-md w-full text-left cursor-pointer"
+                className={cn(
+                  "flex items-center bg-zinc-800 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 transition-all shadow-md cursor-pointer",
+                  isSidebarCollapsed ? "justify-center p-2.5 w-10 h-10 mx-auto" : "gap-3 px-4 py-2.5 w-full text-left"
+                )}
+                title="구글 로그인"
               >
-                <LogIn size={14} />
-                구글 로그인
+                <LogIn size={14} className="shrink-0" />
+                {!isSidebarCollapsed && "구글 로그인"}
               </button>
             )}
 
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
+              className={cn(
+                "flex items-center bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm cursor-pointer",
+                isSidebarCollapsed ? "justify-center p-2.5 w-10 h-10 mx-auto" : "gap-3 px-4 py-2.5 w-full text-left"
+              )}
+              title={isDarkMode ? "라이트 모드 전환" : "다크 모드 전환"}
             >
-              {isDarkMode ? <Sun size={14} className="text-zinc-400" /> : <Moon size={14} className="text-zinc-400" />}
-              {isDarkMode ? '라이트 모드' : '다크 모드'}
+              {isDarkMode ? <Sun size={14} className="text-zinc-400 shrink-0" /> : <Moon size={14} className="text-zinc-400 shrink-0" />}
+              {!isSidebarCollapsed && (isDarkMode ? '라이트 모드' : '다크 모드')}
             </button>
 
             <button 
@@ -2295,55 +2351,75 @@ function AppContent() {
                 }
                 setShowSettings(true);
               }}
-              className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
+              className={cn(
+                "flex items-center bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm cursor-pointer",
+                isSidebarCollapsed ? "justify-center p-2.5 w-10 h-10 mx-auto" : "gap-3 px-4 py-2.5 w-full text-left"
+              )}
+              title="환경설정"
             >
-              <Settings size={14} className="text-zinc-400" />
-              환경설정
+              <Settings size={14} className="text-zinc-400 shrink-0" />
+              {!isSidebarCollapsed && "환경설정"}
             </button>
 
             <button 
               onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
+              className={cn(
+                "flex items-center bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm cursor-pointer",
+                isSidebarCollapsed ? "justify-center p-2.5 w-10 h-10 mx-auto" : "gap-3 px-4 py-2.5 w-full text-left"
+              )}
+              title="기록 내역"
             >
-              <History size={14} className="text-zinc-400" />
-              기록 내역
+              <History size={14} className="text-zinc-400 shrink-0" />
+              {!isSidebarCollapsed && "기록 내역"}
             </button>
 
             <button 
               onClick={resetForm}
-              className="flex items-center gap-3 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm w-full text-left cursor-pointer"
+              className={cn(
+                "flex items-center bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-all shadow-sm cursor-pointer",
+                isSidebarCollapsed ? "justify-center p-2.5 w-10 h-10 mx-auto" : "gap-3 px-4 py-2.5 w-full text-left"
+              )}
+              title="새 기록"
             >
-              <Plus size={14} className="text-zinc-400" />
-              새 기록
+              <Plus size={14} className="text-zinc-400 shrink-0" />
+              {!isSidebarCollapsed && "새 기록"}
             </button>
 
             <button 
               onClick={saveRecord}
               disabled={isSaving || !user || record.isDeleted}
-              className="flex items-center gap-3 px-4 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md w-full text-left cursor-pointer"
+              className={cn(
+                "flex items-center bg-zinc-800 text-white rounded-xl text-xs font-bold hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md cursor-pointer",
+                isSidebarCollapsed ? "justify-center p-2.5 w-10 h-10 mx-auto" : "gap-3 px-4 py-2.5 w-full text-left"
+              )}
+              title="저장"
             >
-              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              저장
+              {isSaving ? <Loader2 size={14} className="animate-spin shrink-0" /> : <Save size={14} className="shrink-0" />}
+              {!isSidebarCollapsed && "저장"}
             </button>
 
             <button 
               onClick={() => setShowPrintPreview(true)}
-              className="flex items-center gap-3 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-md w-full text-left mt-2 cursor-pointer"
+              className={cn(
+                "flex items-center bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-md cursor-pointer",
+                isSidebarCollapsed ? "justify-center p-2.5 w-10 h-10 mx-auto mt-2" : "gap-3 px-4 py-2.5 w-full text-left mt-2"
+              )}
+              title="보고서 발행"
             >
-              <CheckCircle2 size={14} />
-              보고서 발행
+              <CheckCircle2 size={14} className="shrink-0" />
+              {!isSidebarCollapsed && "보고서 발행"}
             </button>
 
           </nav>
         </div>
 
-        <div className="text-[10px] text-zinc-400 font-mono text-center border-t border-zinc-100 pt-4">
-          (주)제니트리
+        <div className="text-[10px] text-zinc-400 font-mono text-center border-t border-zinc-100 dark:border-zinc-800 pt-4 w-full truncate">
+          {isSidebarCollapsed ? "JT" : "(주)제니트리"}
         </div>
       </aside>
 
       {/* ── 2. 메인 콘텐츠 영역 (인쇄 시 숨김) ── */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto space-y-6 print-hidden">
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto overflow-x-auto space-y-6 print-hidden">
         {/* 상단 가운데 정렬 제목 */}
         <header className="text-center py-4 border-b border-[var(--jt-color-border)]">
           <h1 className="text-2xl font-black tracking-tight text-[var(--jt-color-text)]">
@@ -2365,9 +2441,9 @@ function AppContent() {
           </div>
         )}
 
-        {/* 대시보드 레이아웃 (확대/축소 카드로 래핑) */}
+        {/* 대시보드 레이아웃 (확대/축소 카드로 래핑 - 데스크톱에서는 한 줄 고정 및 가로 스크롤 제공) */}
         <div className={cn(
-          "flex flex-wrap gap-6 items-start w-full relative",
+          "flex flex-wrap md:flex-nowrap gap-6 items-start w-full relative pb-4",
           record.isDeleted && "opacity-75 pointer-events-none select-none"
         )}>
           
