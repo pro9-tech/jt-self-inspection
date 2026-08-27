@@ -1550,7 +1550,7 @@ function AppContent() {
   }, [isDarkMode]);
 
   // 마스터 최고 관리자 계정 정의
-  const ADMIN_EMAILS = ['pro9@janytree.com'];
+  const ADMIN_EMAILS = ['pro9@janytree.com', 'abcd7623@janytree.com'];
 
   // 체이스 요청: 전자 서명 이미지 상태 및 활성화 모달 상태 정의
   const [signatures, setSignatures] = useState({ writer: '', reviewer: '', approver: '' });
@@ -1594,7 +1594,7 @@ function AppContent() {
   const checkIsAdmin = (email: string | null | undefined): boolean => {
     if (!email) return false;
     const emailLower = email.toLowerCase().trim();
-    if (emailLower === 'pro9@janytree.com') return true;
+    if (emailLower === 'pro9@janytree.com' || emailLower === 'abcd7623@janytree.com') return true;
     
     const isOpAdmin = (settings?.operators || []).some(
       (item) => item.email.toLowerCase().trim() === emailLower && item.role === 'admin'
