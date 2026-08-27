@@ -1277,7 +1277,7 @@ const MeasurementRow = ({
         {mainMode === '충진' && subMode === '충진1' && (
           <>
             {[0, 1, 2].map((i) => (
-              <td key={`w-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`w-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <NumberInputWithButtons
                   value={measurement.vials[i]}
                   onChange={(val) => handleVialChange(i, val)}
@@ -1286,9 +1286,10 @@ const MeasurementRow = ({
                   inputClassName={getStatusColor(measurement.vials[i])}
                 />
               </td>
-            ))}
+            ))
+            }
             {[0, 1, 2].map((i) => (
-              <td key={`c-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
+              <td key={`c-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
                 <StatusToggle 
                   value={measurement.capStatus[i]} 
                   onChange={(val) => handleStatusChange('capStatus', i, val)} 
@@ -1301,7 +1302,7 @@ const MeasurementRow = ({
         {mainMode === '충진' && subMode === '충진2' && (
           <>
             {[0, 1, 2].map((i) => (
-              <td key={`s-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300")}>
+              <td key={`s-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300")}>
                 <StatusToggle 
                   value={measurement.stickerStatus[i]} 
                   onChange={(val) => handleStatusChange('stickerStatus', i, val)} 
@@ -1309,7 +1310,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`p-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
+              <td key={`p-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
                 <StatusToggle 
                   value={measurement.printingStatus[i]} 
                   onChange={(val) => handleStatusChange('printingStatus', i, val)} 
@@ -1322,7 +1323,7 @@ const MeasurementRow = ({
         {mainMode === '포장' && (
           <>
             {[0, 1, 2].map((i) => (
-              <td key={`p-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`p-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <StatusToggle 
                   value={measurement.printingStatus[i]} 
                   onChange={(val) => handleStatusChange('printingStatus', i, val)} 
@@ -1330,7 +1331,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`c-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`c-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <StatusToggle 
                   value={measurement.capStatus[i]} 
                   onChange={(val) => handleStatusChange('capStatus', i, val)} 
@@ -1338,7 +1339,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`s-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`s-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <StatusToggle 
                   value={measurement.stickerStatus[i]} 
                   onChange={(val) => handleStatusChange('stickerStatus', i, val)} 
@@ -1346,7 +1347,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`sc-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`sc-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
                 <StatusToggle 
                   value={measurement.scratchStatus[i]} 
                   onChange={(val) => handleStatusChange('scratchStatus', i, val)} 
@@ -1354,7 +1355,7 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`f-${i}`} className={cn("p-2 w-[100px] min-w-[100px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
+              <td key={`f-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
                 <StatusToggle 
                   value={measurement.foreignStatus[i]} 
                   onChange={(val) => handleStatusChange('foreignStatus', i, val)} 
@@ -1492,9 +1493,9 @@ const useCardScale = (defaultWidth: number, defaultHeight: number) => {
 };
 
 function AppContent() {
-  const infoCard = useCardScale(320, 350);
-  const tableCard = useCardScale(700, 350);
-  const graphCard = useCardScale(1000, 260);
+  const infoCard = useCardScale(360, 350);
+  const tableCard = useCardScale(850, 350);
+  const graphCard = useCardScale(1150, 260);
 
   const [isInfoCardCollapsed, setIsInfoCardCollapsed] = useState(false);
   const [isTableCardCollapsed, setIsTableCardCollapsed] = useState(false);
@@ -2310,7 +2311,7 @@ function AppContent() {
               minWidth: '280px', 
               minHeight: isInfoCardCollapsed ? 'auto' : '350px', 
               height: isInfoCardCollapsed ? '60px' : undefined,
-              width: '320px', 
+              width: '360px', 
               resize: isInfoCardCollapsed ? 'none' : 'both',
               overflow: isInfoCardCollapsed ? 'hidden' : 'auto',
               padding: isInfoCardCollapsed ? '16px' : '24px',
@@ -2537,7 +2538,7 @@ function AppContent() {
                 <div className="flex-1 overflow-auto">
               <table className={cn(
                 "w-full border-collapse text-left",
-                record.mainMode === '포장' ? "min-w-[1200px]" : "min-w-[650px]"
+                record.mainMode === '포장' ? "min-w-[1950px]" : "min-w-[830px]"
               )}>
                 <thead>
                   <tr className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-500 dark:text-zinc-400">
@@ -2568,41 +2569,41 @@ function AppContent() {
                     <th className="p-2 text-center">Time</th>
                     {record.mainMode === '충진' && record.subMode === '충진1' && (
                       <>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
                       </>
                     )}
                     {record.mainMode === '충진' && record.subMode === '충진2' && (
                       <>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
                       </>
                     )}
                     {record.mainMode === '포장' && (
                       <>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
-                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[70px]">V1</th>
-                        <th className="p-2 text-center w-[70px]">V2</th>
-                        <th className="p-2 text-center w-[70px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
+                        <th className="p-2 text-center border-l-2 border-zinc-200 w-[125px]">V1</th>
+                        <th className="p-2 text-center w-[125px]">V2</th>
+                        <th className="p-2 text-center w-[125px]">V3</th>
                       </>
                     )}
                   </tr>
