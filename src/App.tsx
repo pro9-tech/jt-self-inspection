@@ -340,28 +340,7 @@ const WeightChart = ({
             ))}
           </div>
 
-          {/* 꺾은선일 때만 표시되는 상세 분석 모드 */}
-          {chartType === 'line' && (
-            <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700 animate-fadeIn">
-              {(['average', 'individual', 'minMax'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => {
-                    setChartMode(mode);
-                    setHoveredPoint(null);
-                  }}
-                  className={cn(
-                    "px-3 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
-                    chartMode === mode 
-                      ? "bg-white dark:bg-zinc-750 text-zinc-800 dark:text-zinc-100 shadow-sm" 
-                      : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-650"
-                  )}
-                >
-                  {mode === 'average' ? '평균' : mode === 'individual' ? '개별' : '범위'}
-                </button>
-              ))}
-            </div>
-          )}
+
         </div>
       </div>
       
@@ -2529,16 +2508,20 @@ function AppContent() {
       <main className="flex-1 p-6 md:p-8 overflow-y-auto overflow-x-auto space-y-6 pb-24 md:pb-8 print-hidden">
         {/* ── 체이스 요청: 모바일 전용 상단 헤더 바 ── */}
         <div className="md:hidden flex items-center justify-between p-4 border-b border-[var(--jt-color-border)] dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-30 -mx-6 -mt-6 mb-6 select-none shrink-0">
-          <div className="flex items-center gap-3">
-            <img 
-              src="/brand/logo/logo-mark.svg?v=2" 
-              alt="Zenitry Logo" 
-              className="h-7 w-auto object-contain cursor-pointer" 
-              onClick={handleGoDashboard}
-            />
-            <h1 className="text-base font-black text-[var(--jt-color-text)] tracking-tight">
-              자주측정 ({record.mainMode})
+          <img 
+            src="/brand/logo/logo-mark.svg?v=2" 
+            alt="Zenitry Logo" 
+            className="h-10 w-10 object-contain cursor-pointer shrink-0" 
+            onClick={handleGoDashboard}
+          />
+          
+          <div className="flex-1 text-center px-2">
+            <h1 className="text-sm font-black text-[var(--jt-color-text)] tracking-tight leading-tight">
+              충진품 자주측정
             </h1>
+            <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-450 mt-0.5 leading-none">
+              ({record.mainMode})
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {/* 모바일 뷰에서도 분류 모드 토글 제공 */}
