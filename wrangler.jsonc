@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jt-self-inspection",
+  "compatibility_date": "2026-08-20",
+  "assets": { "directory": "./dist" },
+  "observability": { "enabled": true }
+}

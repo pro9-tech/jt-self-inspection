@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Cloudflare & Wrangler
+.open-next/
+.wrangler/
+.dev.vars
