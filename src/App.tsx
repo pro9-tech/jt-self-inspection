@@ -1597,6 +1597,29 @@ function AppContent() {
   // Auth Listener (체이스 요청: 구글 로그인 이메일 권한 검증 기능 탑재)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      // 0. 만약 로컬에 이미 공식 관리자 pro9@janytree.com의 세션이 설정되어 있다면,
+      // 파이어베이스가 비동기/지연 로딩으로 가져오는 잘못된 이전 계정(u) 세션을 강제 무시/로그아웃 처리한다.
+      const cachedUserStr = localStorage.getItem('jt_session_user');
+      if (cachedUserStr) {
+        try {
+          const cachedUser = JSON.parse(cachedUserStr);
+          if (cachedUser?.email === 'pro9@janytree.com') {
+            // 파이어베이스 내부적으로 잘못된 타 계정이 걸쳐져 있다면 선제 로그아웃 (우회 세션은 보존)
+            if (u && u.email !== 'pro9@janytree.com') {
+              await signOut(auth);
+            }
+            setUser(cachedUser);
+            setIsAuthReady(true);
+            setRecord(prev => ({ ...prev, uid: cachedUser.uid }));
+            setSettings(prev => ({ ...prev, uid: cachedUser.uid }));
+            setIsAdminMode(true);
+            return;
+          }
+        } catch (e) {
+          console.error("Session guard error:", e);
+        }
+      }
+
       if (u) {
         // 1. 관리자 계정은 무조건 통과
         if (u.email === 'pro9@janytree.com') {
@@ -1685,20 +1708,6 @@ function AppContent() {
           );
         }
       } else {
-        // 구글 로그인 차단/실패 시에도 로컬에 저장된 관리자 임시 세션이 있는지 확인하여 복구
-        const cachedUser = localStorage.getItem('jt_session_user');
-        if (cachedUser) {
-          try {
-            const parsed = JSON.parse(cachedUser);
-            setUser(parsed);
-            setIsAuthReady(true);
-            setRecord(prev => ({ ...prev, uid: parsed.uid }));
-            setSettings(prev => ({ ...prev, uid: parsed.uid }));
-            return;
-          } catch (e) {
-            console.error("Failed to parse cached session:", e);
-          }
-        }
         setUser(null);
         setIsAuthReady(true);
       }
