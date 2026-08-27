@@ -161,6 +161,7 @@ interface ConfigItem {
 interface UserWithEmail {
   name: string;
   email: string;
+  role?: string;
 }
 
 interface AppSettings {
@@ -1529,9 +1530,6 @@ function AppContent() {
   const [isTableCardCollapsed, setIsTableCardCollapsed] = useState(false);
   const [isGraphCardCollapsed, setIsGraphCardCollapsed] = useState(false);
 
-  // 체이스 요청: 관리자 계정 이메일 상수 정의
-  const ADMIN_EMAILS = ['pro9@janytree.com', 'abcd7623@janytree.com'];
-
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -1551,12 +1549,8 @@ function AppContent() {
     }
   }, [isDarkMode]);
 
-  // 체이스 요청: 관리자 계정 로그인 시 관리자 권한 자동 활성화
-  useEffect(() => {
-    if (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase().trim())) {
-      setIsAdminMode(true);
-    }
-  }, [user]);
+  // 마스터 최고 관리자 계정 정의
+  const ADMIN_EMAILS = ['pro9@janytree.com'];
 
   // 체이스 요청: 전자 서명 이미지 상태 및 활성화 모달 상태 정의
   const [signatures, setSignatures] = useState({ writer: '', reviewer: '', approver: '' });
@@ -1595,6 +1589,30 @@ function AppContent() {
     scriptUrl: '',
     uid: '',
   });
+
+  // 동적 일반 관리자 권한 검증 헬퍼 함수
+  const checkIsAdmin = (email: string | null | undefined): boolean => {
+    if (!email) return false;
+    const emailLower = email.toLowerCase().trim();
+    if (emailLower === 'pro9@janytree.com') return true;
+    
+    const isOpAdmin = (settings?.operators || []).some(
+      (item) => item.email.toLowerCase().trim() === emailLower && item.role === 'admin'
+    );
+    const isVerAdmin = (settings?.verifiers || []).some(
+      (item) => item.email.toLowerCase().trim() === emailLower && item.role === 'admin'
+    );
+    return isOpAdmin || isVerAdmin;
+  };
+
+  // 체이스 요청: 관리자 계정 로그인 시 관리자 권한 자동 활성화
+  useEffect(() => {
+    if (user?.email && checkIsAdmin(user.email)) {
+      setIsAdminMode(true);
+    } else {
+      setIsAdminMode(false);
+    }
+  }, [user, settings]);
 
   const [history, setHistory] = useState<FillingRecord[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1812,27 +1830,35 @@ function AppContent() {
       } catch (error: any) {
         console.error("Redirect login failed:", error);
         
-        // 리다이렉트 로그인 실패(구글 차단 등) 시에도 pro9@janytree.com 임시 세션으로 우회 로그인 처리
-        const mockAdminUser = {
-          uid: 'admin-pro9-janytree-com',
-          email: 'pro9@janytree.com',
-          displayName: '관리자',
-          photoURL: null,
-          emailVerified: true
-        };
-        
-        localStorage.setItem('jt_session_user', JSON.stringify(mockAdminUser));
-        setUser(mockAdminUser as any);
-        setIsAuthReady(true);
-        setRecord(prev => ({ ...prev, uid: mockAdminUser.uid }));
-        setSettings(prev => ({ ...prev, uid: mockAdminUser.uid }));
-        setIsAdminMode(true);
-        
-        showAlert(
-          "구글 로그인 정책으로 차단되어, 최고 관리자(pro9@janytree.com) 임시 세션으로 안전하게 로그인 처리되었습니다.",
-          "info",
-          "관리자 세션 로그인"
-        );
+        // 중요: 사용자가 실제로 로그인 버튼을 누르고 리다이렉트되던 도중 실패(차단 등)한 경우에만 마스터 관리자 세션 우회 적용
+        const isLoggingIn = sessionStorage.getItem('jt_is_logging_in') === 'true';
+        if (isLoggingIn) {
+          const mockAdminUser = {
+            uid: 'admin-pro9-janytree-com',
+            email: 'pro9@janytree.com',
+            displayName: '관리자',
+            photoURL: null,
+            emailVerified: true
+          };
+          
+          localStorage.setItem('jt_session_user', JSON.stringify(mockAdminUser));
+          setUser(mockAdminUser as any);
+          setIsAuthReady(true);
+          setRecord(prev => ({ ...prev, uid: mockAdminUser.uid }));
+          setSettings(prev => ({ ...prev, uid: mockAdminUser.uid }));
+          setIsAdminMode(true);
+          sessionStorage.removeItem('jt_is_logging_in');
+          
+          showAlert(
+            "구글 로그인 정책으로 차단되어, 최고 관리자(pro9@janytree.com) 임시 세션으로 안전하게 로그인 처리되었습니다.",
+            "info",
+            "관리자 세션 로그인"
+          );
+        } else {
+          // 단순 첫 페이지 진입 시 리다이렉트 결과 처리 에러는 조용히 무시하고 안전하게 로그아웃/비로그인 상태 유지
+          setUser(null);
+          setIsAuthReady(true);
+        }
       }
     };
     handleRedirect();
@@ -1931,50 +1957,41 @@ function AppContent() {
       prompt: 'select_account'
     });
     // Detect mobile
+    // Detect mobile
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    // Detect if in iframe (AI Studio preview)
-    const isInIframe = window.self !== window.top;
 
     try {
-      if (isMobile && !isInIframe) {
-        // Use redirect for mobile browsers when not in iframe to avoid popup issues
-        await signInWithRedirect(auth, provider);
+      // 1. Popup 방식을 기본으로 시도하여 데스크톱 및 일반 브라우저 대응 극대화
+      await signInWithPopup(auth, provider);
+    } catch (popupError: any) {
+      console.warn("Popup login blocked or failed. Trying Redirect Fallback...", popupError);
+      
+      // 팝업이 차단되었거나, 모바일 브라우저인 경우 리다이렉트 방식으로 Fallback 시도
+      if (
+        popupError.code === 'auth/popup-blocked' ||
+        popupError.code === 'auth/popup-closed-by-user' ||
+        popupError.code === 'auth/cancelled-popup-request' ||
+        isMobile
+      ) {
+        try {
+          await signInWithRedirect(auth, provider);
+        } catch (redirectError: any) {
+          console.error("Redirect login failed:", redirectError);
+          sessionStorage.removeItem('jt_is_logging_in');
+          showAlert(
+            "구글 로그인을 진행하는 중에 실패하였습니다. (사유: " + (redirectError.message || redirectError.code) + ")",
+            "error",
+            "로그인 실패"
+          );
+        }
       } else {
-        // Use popup for desktop or when in iframe
-        await signInWithPopup(auth, provider);
+        sessionStorage.removeItem('jt_is_logging_in');
+        showAlert(
+          "구글 로그인이 실패하였습니다. (사유: " + (popupError.message || popupError.code) + ")",
+          "error",
+          "로그인 실패"
+        );
       }
-    } catch (error: any) {
-      console.error("Login failed:", error);
-      
-      try {
-        // 기존의 잘못된 Firebase 세션이 간섭하지 못하도록 먼저 완전 로그아웃 처리
-        await signOut(auth);
-      } catch (e) {
-        console.error("Sign out on login error failed:", e);
-      }
-      
-      // 구글 로그인 권한 차단 에러 발생 시(혹은 팝업 닫힘 등 모든 에러 발생 시)
-      // pro9@janytree.com으로 임시 관리자 세션을 주입하여 자동 로그인 처리
-      const mockAdminUser = {
-        uid: 'admin-pro9-janytree-com',
-        email: 'pro9@janytree.com',
-        displayName: '관리자',
-        photoURL: null,
-        emailVerified: true
-      };
-      
-      localStorage.setItem('jt_session_user', JSON.stringify(mockAdminUser));
-      setUser(mockAdminUser as any);
-      setIsAuthReady(true);
-      setRecord(prev => ({ ...prev, uid: mockAdminUser.uid }));
-      setSettings(prev => ({ ...prev, uid: mockAdminUser.uid }));
-      setIsAdminMode(true);
-      
-      showAlert(
-        "구글 로그인 정책으로 차단되어, 최고 관리자(pro9@janytree.com) 임시 세션으로 안전하게 로그인 처리되었습니다.",
-        "info",
-        "관리자 세션 로그인"
-      );
     }
   };
 
@@ -2541,7 +2558,7 @@ function AppContent() {
                 </button>
               ))}
             </div>
-            {user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase().trim()) && (
+            {user?.email && checkIsAdmin(user.email) && (
               <button
                 onClick={() => setIsAdminMode(prev => !prev)}
                 className={cn(
@@ -3105,7 +3122,7 @@ function AppContent() {
                     <p className="text-xs text-zinc-400 mt-1 uppercase tracking-widest font-mono">Application Settings</p>
                   </div>
                   {/* 체이스 요청: 관리자 계정 로그인 시 자물쇠(관리자 모드) 활성화 */}
-                  {user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase().trim()) && (
+                  {user?.email && checkIsAdmin(user.email) && (
                     <button
                       onClick={() => setIsAdminMode(prev => !prev)}
                       className={cn(
@@ -3267,7 +3284,7 @@ function AppContent() {
                               </h3>
                               <button 
                                 onClick={() => {
-                                  const newVerifiers = [...(settings.verifiers || []), { name: '', email: '' }];
+                                  const newVerifiers = [...(settings.verifiers || []), { name: '', email: '', role: 'user' }];
                                   setSettings({ ...settings, verifiers: newVerifiers });
                                 }}
                                 className="text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-350 flex items-center gap-1 cursor-pointer"
@@ -3277,7 +3294,7 @@ function AppContent() {
                             </div>
                             <div className="space-y-2">
                               {(settings.verifiers || []).map((verItem, idx) => {
-                                const ver = typeof verItem === 'string' ? { name: verItem, email: '' } : (verItem || { name: '', email: '' });
+                                const ver = typeof verItem === 'string' ? { name: verItem, email: '', role: 'user' } : (verItem || { name: '', email: '', role: 'user' });
                                 return (
                                   <div key={idx} className="relative group flex items-center gap-2">
                                     <input 
@@ -3285,8 +3302,8 @@ function AppContent() {
                                       value={ver.name} 
                                       onChange={(e) => {
                                         const newVers = [...settings.verifiers];
-                                        const cur = typeof newVers[idx] === 'string' ? { name: newVers[idx] as string, email: '' } : (newVers[idx] as { name: string; email: string });
-                                        newVers[idx] = { name: e.target.value, email: cur.email };
+                                        const cur = typeof newVers[idx] === 'string' ? { name: newVers[idx] as string, email: '', role: 'user' } : (newVers[idx] as { name: string; email: string; role?: string });
+                                        newVers[idx] = { ...cur, name: e.target.value };
                                         setSettings({ ...settings, verifiers: newVers });
                                       }}
                                       placeholder="측정자 성명"
@@ -3297,13 +3314,27 @@ function AppContent() {
                                       value={ver.email || ''} 
                                       onChange={(e) => {
                                         const newVers = [...settings.verifiers];
-                                        const cur = typeof newVers[idx] === 'string' ? { name: newVers[idx] as string, email: '' } : (newVers[idx] as { name: string; email: string });
-                                        newVers[idx] = { name: cur.name, email: e.target.value };
+                                        const cur = typeof newVers[idx] === 'string' ? { name: newVers[idx] as string, email: '', role: 'user' } : (newVers[idx] as { name: string; email: string; role?: string });
+                                        newVers[idx] = { ...cur, email: e.target.value };
                                         setSettings({ ...settings, verifiers: newVers });
                                       }}
                                       placeholder="구글 이메일"
                                       className="flex-1 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3 text-zinc-800 dark:text-zinc-100"
                                     />
+                                    <label className="flex items-center gap-1 shrink-0 text-xs text-zinc-500 font-bold select-none cursor-pointer">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={ver.role === 'admin'} 
+                                        onChange={(e) => {
+                                          const newVers = [...settings.verifiers];
+                                          const cur = typeof newVers[idx] === 'string' ? { name: newVers[idx] as string, email: '', role: 'user' } : (newVers[idx] as { name: string; email: string; role?: string });
+                                          newVers[idx] = { ...cur, role: e.target.checked ? 'admin' : 'user' };
+                                          setSettings({ ...settings, verifiers: newVers });
+                                        }}
+                                        className="rounded border-zinc-300 text-zinc-800 focus:ring-zinc-105"
+                                      />
+                                      관리자
+                                    </label>
                                     <button 
                                       onClick={() => {
                                         const newVers = settings.verifiers.filter((_, i) => i !== idx);
@@ -3326,7 +3357,7 @@ function AppContent() {
                               </h3>
                               <button 
                                 onClick={() => {
-                                  const newOperators = [...(settings.operators || []), { name: '', email: '' }];
+                                  const newOperators = [...(settings.operators || []), { name: '', email: '', role: 'user' }];
                                   setSettings({ ...settings, operators: newOperators });
                                 }}
                                 className="text-xs font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-350 flex items-center gap-1 cursor-pointer"
@@ -3336,7 +3367,7 @@ function AppContent() {
                             </div>
                             <div className="space-y-2">
                               {(settings.operators || []).map((opItem, idx) => {
-                                const op = typeof opItem === 'string' ? { name: opItem, email: '' } : (opItem || { name: '', email: '' });
+                                const op = typeof opItem === 'string' ? { name: opItem, email: '', role: 'user' } : (opItem || { name: '', email: '', role: 'user' });
                                 return (
                                   <div key={idx} className="relative group flex items-center gap-2">
                                     <input 
@@ -3344,8 +3375,8 @@ function AppContent() {
                                       value={op.name} 
                                       onChange={(e) => {
                                         const newOps = [...settings.operators];
-                                        const cur = typeof newOps[idx] === 'string' ? { name: newOps[idx] as string, email: '' } : (newOps[idx] as { name: string; email: string });
-                                        newOps[idx] = { name: e.target.value, email: cur.email };
+                                        const cur = typeof newOps[idx] === 'string' ? { name: newOps[idx] as string, email: '', role: 'user' } : (newOps[idx] as { name: string; email: string; role?: string });
+                                        newOps[idx] = { ...cur, name: e.target.value };
                                         setSettings({ ...settings, operators: newOps });
                                       }}
                                       placeholder="확인자 성명"
@@ -3356,13 +3387,27 @@ function AppContent() {
                                       value={op.email || ''} 
                                       onChange={(e) => {
                                         const newOps = [...settings.operators];
-                                        const cur = typeof newOps[idx] === 'string' ? { name: newOps[idx] as string, email: '' } : (newOps[idx] as { name: string; email: string });
-                                        newOps[idx] = { name: cur.name, email: e.target.value };
+                                        const cur = typeof newOps[idx] === 'string' ? { name: newOps[idx] as string, email: '', role: 'user' } : (newOps[idx] as { name: string; email: string; role?: string });
+                                        newOps[idx] = { ...cur, email: e.target.value };
                                         setSettings({ ...settings, operators: newOps });
                                       }}
                                       placeholder="구글 이메일"
                                       className="flex-1 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-100 p-3 text-zinc-800 dark:text-zinc-100"
                                     />
+                                    <label className="flex items-center gap-1 shrink-0 text-xs text-zinc-500 font-bold select-none cursor-pointer">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={op.role === 'admin'} 
+                                        onChange={(e) => {
+                                          const newOps = [...settings.operators];
+                                          const cur = typeof newOps[idx] === 'string' ? { name: newOps[idx] as string, email: '', role: 'user' } : (newOps[idx] as { name: string; email: string; role?: string });
+                                          newOps[idx] = { ...cur, role: e.target.checked ? 'admin' : 'user' };
+                                          setSettings({ ...settings, operators: newOps });
+                                        }}
+                                        className="rounded border-zinc-300 text-zinc-800 focus:ring-zinc-105"
+                                      />
+                                      관리자
+                                    </label>
                                     <button 
                                       onClick={() => {
                                         const newOps = settings.operators.filter((_, i) => i !== idx);

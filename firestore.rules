@@ -41,10 +41,13 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() &&
-        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-          (request.auth.token.email == "abcd7623@janytree.com" && request.auth.token.email_verified == true));
+      return isAuthenticated() && (
+        (request.auth.token.email == "pro9@janytree.com" && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/settings/global) && (
+          get(/databases/$(database)/documents/settings/global).data.operators.any(op => op.get('email', '') == request.auth.token.email && op.get('role', 'user') == 'admin') ||
+          get(/databases/$(database)/documents/settings/global).data.verifiers.any(ve => ve.get('email', '') == request.auth.token.email && ve.get('role', 'user') == 'admin')
+        ))
+      );
     }
 
     function uidUnchanged() {
