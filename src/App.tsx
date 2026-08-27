@@ -1629,13 +1629,33 @@ function AppContent() {
             setRecord(prev => ({ ...prev, uid: u.uid }));
             setSettings(prev => ({ ...prev, uid: u.uid }));
           } else {
+            // 잘못된 로그인 계정 흔적을 강제로 지우고 화면을 리셋하는 함수
+            const clearAndSignOut = async () => {
+              try {
+                await signOut(auth);
+                // LocalStorage 내의 firebase 캐시 키 모두 강제 삭제
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                  const key = localStorage.key(i);
+                  if (key && (key.startsWith('firebase:authUser') || key.includes('firebase'))) {
+                    localStorage.removeItem(key);
+                  }
+                }
+                setUser(null);
+                window.location.reload();
+              } catch (e) {
+                console.error("Clean auth cache failed:", e);
+                window.location.reload();
+              }
+            };
+
             await signOut(auth);
             setUser(null);
             setIsAuthReady(true);
             showAlert(
               `권한이 없습니다. 등록되지 않은 구글 계정(${u.email})입니다.\n관리자(pro9@janytree.com)에게 문의하여 사용자/확인자 이메일 등록을 진행해 주세요.`,
               "error",
-              "로그인 제한"
+              "로그인 제한",
+              clearAndSignOut
             );
           }
         } catch (err) {
@@ -1795,6 +1815,13 @@ function AppContent() {
       }
     } catch (error: any) {
       console.error("Login failed:", error);
+      
+      try {
+        // 기존의 잘못된 Firebase 세션이 간섭하지 못하도록 먼저 완전 로그아웃 처리
+        await signOut(auth);
+      } catch (e) {
+        console.error("Sign out on login error failed:", e);
+      }
       
       // 구글 로그인 권한 차단 에러 발생 시(혹은 팝업 닫힘 등 모든 에러 발생 시)
       // pro9@janytree.com으로 임시 관리자 세션을 주입하여 자동 로그인 처리
