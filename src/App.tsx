@@ -1504,6 +1504,9 @@ function AppContent() {
   const [isTableCardCollapsed, setIsTableCardCollapsed] = useState(false);
   const [isGraphCardCollapsed, setIsGraphCardCollapsed] = useState(false);
 
+  // 체이스 요청: 관리자 계정 이메일 상수 정의
+  const ADMIN_EMAILS = ['pro9@janytree.com', 'abcd7623@janytree.com'];
+
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -1523,9 +1526,9 @@ function AppContent() {
     }
   }, [isDarkMode]);
 
-  // 체이스 요청: pro9@janytree.com 계정 로그인 시 관리자 권한 자동 활성화
+  // 체이스 요청: 관리자 계정 로그인 시 관리자 권한 자동 활성화
   useEffect(() => {
-    if (user?.email === 'pro9@janytree.com') {
+    if (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase().trim())) {
       setIsAdminMode(true);
     }
   }, [user]);
@@ -1600,15 +1603,15 @@ function AppContent() {
   // Auth Listener (체이스 요청: 구글 로그인 이메일 권한 검증 기능 탑재)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      // 0. 만약 로컬에 이미 공식 관리자 pro9@janytree.com의 세션이 설정되어 있다면,
+      // 0. 만약 로컬에 이미 공식 관리자 세션이 설정되어 있다면,
       // 파이어베이스가 비동기/지연 로딩으로 가져오는 잘못된 이전 계정(u) 세션을 강제 무시/로그아웃 처리한다.
       const cachedUserStr = localStorage.getItem('jt_session_user');
       if (cachedUserStr) {
         try {
           const cachedUser = JSON.parse(cachedUserStr);
-          if (cachedUser?.email === 'pro9@janytree.com') {
+          if (cachedUser?.email && ADMIN_EMAILS.includes(cachedUser.email.toLowerCase().trim())) {
             // 파이어베이스 내부적으로 잘못된 타 계정이 걸쳐져 있다면 선제 로그아웃 (우회 세션은 보존)
-            if (u && u.email !== 'pro9@janytree.com') {
+            if (u && u.email && !ADMIN_EMAILS.includes(u.email.toLowerCase().trim())) {
               await signOut(auth);
             }
             setUser(cachedUser);
@@ -1625,11 +1628,51 @@ function AppContent() {
 
       if (u) {
         // 1. 관리자 계정은 무조건 통과
-        if (u.email === 'pro9@janytree.com') {
+        if (u.email && ADMIN_EMAILS.includes(u.email.toLowerCase().trim())) {
           setUser(u);
           setIsAuthReady(true);
           setRecord(prev => ({ ...prev, uid: u.uid }));
           setSettings(prev => ({ ...prev, uid: u.uid }));
+          sessionStorage.removeItem('jt_is_logging_in'); // 로그인 완료 시 마커 해제
+
+          // 관리자 계정이 로그인 시 settings/global에 operators/verifiers 정보가 누락되어 있다면 자동으로 Firestore에 써준다.
+          try {
+            const snap = await getDoc(doc(db, 'settings', 'global'));
+            if (snap.exists()) {
+              const data = snap.data();
+              const ops = data.operators || [];
+              const vers = data.verifiers || [];
+              
+              const userEmailLower = u.email.toLowerCase().trim();
+              const hasEmailInOps = ops.some((item: any) => typeof item !== 'string' && (item?.email || '').toLowerCase().trim() === userEmailLower);
+              const hasEmailInVers = vers.some((item: any) => typeof item !== 'string' && (item?.email || '').toLowerCase().trim() === userEmailLower);
+              
+              let needsUpdate = false;
+              const updatedOps = [...ops];
+              const updatedVers = [...vers];
+              
+              const adminLabel = u.email === 'pro9@janytree.com' ? '관리자(pro9)' : '관리자(abcd)';
+              
+              if (!hasEmailInOps) {
+                updatedOps.push({ name: adminLabel, email: userEmailLower });
+                needsUpdate = true;
+              }
+              if (!hasEmailInVers) {
+                updatedVers.push({ name: adminLabel, email: userEmailLower });
+                needsUpdate = true;
+              }
+              
+              if (needsUpdate) {
+                await updateDoc(doc(db, 'settings', 'global'), {
+                  operators: updatedOps,
+                  verifiers: updatedVers
+                });
+                console.log("Firestore settings/global auto-updated for admin:", u.email);
+              }
+            }
+          } catch (dbErr) {
+            console.error("Firestore settings auto-update failed:", dbErr);
+          }
           return;
         }
 
@@ -1645,7 +1688,7 @@ function AppContent() {
             isAllowed = [...ops, ...vers].some((item: any) => {
               if (typeof item === 'string') return false; // 이름만 적힌 레거시는 매칭 통과 불가
               const email = item?.email || '';
-              return email.toLowerCase().trim() === u.email.toLowerCase().trim();
+              return email.toLowerCase().trim() === u.email!.toLowerCase().trim();
             });
           }
 
@@ -1654,27 +1697,13 @@ function AppContent() {
             setIsAuthReady(true);
             setRecord(prev => ({ ...prev, uid: u.uid }));
             setSettings(prev => ({ ...prev, uid: u.uid }));
+            sessionStorage.removeItem('jt_is_logging_in'); // 로그인 완료 시 마커 해제
           } else {
-            // 선제적으로 로그아웃 및 IndexedDB/LocalStorage 강제 초기화 진행
-            try {
-              await signOut(auth);
-              indexedDB.deleteDatabase("firebaseLocalStorageDb");
-              for (let i = localStorage.length - 1; i >= 0; i--) {
-                const key = localStorage.key(i);
-                if (key && (key.startsWith('firebase:authUser') || key.includes('firebase'))) {
-                  localStorage.removeItem(key);
-                }
-              }
-              sessionStorage.clear();
-            } catch (e) {
-              console.error("선제 초기화 실패:", e);
-            }
+            // [체이스 요청 수정] 로그인 제한 처리 분기 로직
+            const isLoggingIn = sessionStorage.getItem('jt_is_logging_in') === 'true';
 
-            setUser(null);
-            setIsAuthReady(true);
-
-            // 확인 버튼을 클릭하면 한 번 더 확실하게 지우고 새로고침
-            const handleConfirmClose = async () => {
+            // 세션 및 스토리지 초기화 공통 함수
+            const clearSessionAndLogOut = async () => {
               try {
                 await signOut(auth);
                 indexedDB.deleteDatabase("firebaseLocalStorageDb");
@@ -1685,25 +1714,41 @@ function AppContent() {
                   }
                 }
                 sessionStorage.clear();
-                setUser(null);
-                window.location.reload();
+                localStorage.removeItem('jt_session_user');
               } catch (e) {
-                window.location.reload();
+                console.error("선제 초기화 실패:", e);
               }
+              setUser(null);
+              setIsAuthReady(true);
             };
 
-            showAlert(
-              `권한이 없습니다. 등록되지 않은 구글 계정(${u.email})입니다.\n관리자(pro9@janytree.com)에게 문의하여 사용자/확인자 이메일 등록을 진행해 주세요.`,
-              "error",
-              "로그인 제한",
-              handleConfirmClose
-            );
+            if (isLoggingIn) {
+              // 1. 직접 로그인 버튼을 클릭하여 시도한 경우: 차단 안내 팝업을 노출하고 세션 강제 리셋 후 새로고침
+              const handleConfirmClose = async () => {
+                await clearSessionAndLogOut();
+                window.location.reload();
+              };
+
+              setUser(null);
+              setIsAuthReady(true);
+
+              showAlert(
+                `권한이 없습니다. 등록되지 않은 구글 계정(${u.email})입니다.\n관리자(pro9@janytree.com 또는 abcd7623@janytree.com)에게 문의하여 사용자/확인자 이메일 등록을 진행해 주세요.`,
+                "error",
+                "로그인 제한",
+                handleConfirmClose
+              );
+            } else {
+              // 2. 앱 구동 시 자동 로그인으로 권한 없는 계정이 걸린 경우: 팝업 노출 없이 조용히 로그아웃 처리하여 로그인 화면 유지
+              await clearSessionAndLogOut();
+            }
           }
         } catch (err) {
           console.error("Permission check failed:", err);
           await signOut(auth);
           setUser(null);
           setIsAuthReady(true);
+          sessionStorage.removeItem('jt_is_logging_in');
           showAlert(
             "로그인 권한을 확인하는 중에 실패하였습니다. 네트워크 상태를 확인하시고 다시 로그인해주세요.",
             "error",
@@ -1839,6 +1884,9 @@ function AppContent() {
     } catch (e) {
       console.error("Pre-login clear failed:", e);
     }
+
+    // 체이스 요청: 사용자가 직접 로그인 버튼을 누른 상태를 마킹하여 자동 차단 방지
+    sessionStorage.setItem('jt_is_logging_in', 'true');
 
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({
@@ -2966,8 +3014,8 @@ function AppContent() {
                     <h2 className="text-xl font-bold text-zinc-800 dark:text-zinc-100">환경설정</h2>
                     <p className="text-xs text-zinc-400 mt-1 uppercase tracking-widest font-mono">Application Settings</p>
                   </div>
-                  {/* 체이스 요청: pro9@janytree.com 계정 로그인 시 자물쇠(관리자 모드) 활성화 */}
-                  {user?.email === 'pro9@janytree.com' && (
+                  {/* 체이스 요청: 관리자 계정 로그인 시 자물쇠(관리자 모드) 활성화 */}
+                  {user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase().trim()) && (
                     <button
                       onClick={() => setIsAdminMode(prev => !prev)}
                       className={cn(
