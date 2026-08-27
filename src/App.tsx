@@ -1629,33 +1629,48 @@ function AppContent() {
             setRecord(prev => ({ ...prev, uid: u.uid }));
             setSettings(prev => ({ ...prev, uid: u.uid }));
           } else {
-            // 잘못된 로그인 계정 흔적을 강제로 지우고 화면을 리셋하는 함수
-            const clearAndSignOut = async () => {
+            // 선제적으로 로그아웃 및 IndexedDB/LocalStorage 강제 초기화 진행
+            try {
+              await signOut(auth);
+              indexedDB.deleteDatabase("firebaseLocalStorageDb");
+              for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('firebase:authUser') || key.includes('firebase'))) {
+                  localStorage.removeItem(key);
+                }
+              }
+              sessionStorage.clear();
+            } catch (e) {
+              console.error("선제 초기화 실패:", e);
+            }
+
+            setUser(null);
+            setIsAuthReady(true);
+
+            // 확인 버튼을 클릭하면 한 번 더 확실하게 지우고 새로고침
+            const handleConfirmClose = async () => {
               try {
                 await signOut(auth);
-                // LocalStorage 내의 firebase 캐시 키 모두 강제 삭제
+                indexedDB.deleteDatabase("firebaseLocalStorageDb");
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                   const key = localStorage.key(i);
                   if (key && (key.startsWith('firebase:authUser') || key.includes('firebase'))) {
                     localStorage.removeItem(key);
                   }
                 }
+                sessionStorage.clear();
                 setUser(null);
                 window.location.reload();
               } catch (e) {
-                console.error("Clean auth cache failed:", e);
                 window.location.reload();
               }
             };
 
-            await signOut(auth);
-            setUser(null);
-            setIsAuthReady(true);
             showAlert(
               `권한이 없습니다. 등록되지 않은 구글 계정(${u.email})입니다.\n관리자(pro9@janytree.com)에게 문의하여 사용자/확인자 이메일 등록을 진행해 주세요.`,
               "error",
               "로그인 제한",
-              clearAndSignOut
+              handleConfirmClose
             );
           }
         } catch (err) {
@@ -1796,6 +1811,23 @@ function AppContent() {
   });
 
   const handleLogin = async () => {
+    // 로그인 시도 전, 이전 계정의 모든 흔적(IndexedDB, LocalStorage, 세션)을 선제적으로 완벽 차단
+    try {
+      await signOut(auth);
+      indexedDB.deleteDatabase("firebaseLocalStorageDb");
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('firebase:authUser') || key.includes('firebase'))) {
+          localStorage.removeItem(key);
+        }
+      }
+      sessionStorage.clear();
+      localStorage.removeItem('jt_session_user');
+      setUser(null);
+    } catch (e) {
+      console.error("Pre-login clear failed:", e);
+    }
+
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({
       prompt: 'select_account'
