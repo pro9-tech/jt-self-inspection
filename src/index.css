@@ -294,43 +294,8 @@ body {
     flex-direction: column !important;
   }
 
-  /* 2. 사이드바 모바일 최적화 */
-  aside.w-64 {
-    width: 100% !important;
-    height: auto !important;
-    border-right: none !important;
-    border-bottom: 1px solid var(--jt-color-border) !important;
-    padding: 16px !important;
-    gap: 16px !important;
-  }
-
-  /* 로고 하단 테두리 조정 */
-  aside.w-64 .border-b {
-    padding-bottom: 8px !important;
-    margin-bottom: 8px !important;
-  }
-
-  /* 분류 모드 간격 조정 */
-  aside.w-64 .space-y-6 > .space-y-2 {
-    margin-top: 8px !important;
-    margin-bottom: 8px !important;
-  }
-
-  /* 메뉴 세로 리스트를 2열 그리드로 배치하여 공간 활용 극대화 */
-  aside.w-64 nav {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-  }
-
-  /* 사용자 정보 및 보고서 발행 버튼은 모바일 그리드에서 2칸을 차지하도록 함 */
-  aside.w-64 nav > div:first-of-type,
-  aside.w-64 nav > button:last-of-type {
-    grid-column: span 2 / span 2 !important;
-  }
-
-  /* 하단 카피라이터 텍스트는 모바일에서 숨김 */
-  aside.w-64 > div:last-child {
+  /* 2. 사이드바 모바일 숨김 (바텀 탭 바와 탑 헤더로 대체하여 제어) */
+  aside {
     display: none !important;
   }
 

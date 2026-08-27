@@ -257,7 +257,6 @@ const DEFAULT_MEASUREMENTS: Measurement[] = TIMES.map(time => ({
 
 // --- Components ---
 
-// 중량 계측값 트렌드 그래프 컴포넌트
 const WeightChart = ({ 
   measurements, 
   standardWeight, 
@@ -269,6 +268,7 @@ const WeightChart = ({
   underweightTolerance: number | null; 
   overweightTolerance: number | null; 
   }) => {
+  const [chartType, setChartType] = useState<'line' | 'bar' | 'pie' | '3d'>('line');
   const [chartMode, setChartMode] = useState<'average' | 'individual' | 'minMax'>('average');
   const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; value: number; label: string } | null>(null);
 
@@ -300,32 +300,68 @@ const WeightChart = ({
   const getX = (index: number) => padding + (index / (measurements.length - 1 || 1)) * chartWidth;
   const getY = (val: number) => height - padding - ((val - minVal) / yRange) * chartHeight;
 
+  // 파이 차트용 삼각함수 헬퍼 함수
+  const getCoordinatesForPercent = (percent: number) => {
+    // 12시 방향부터 회전하도록 설정하기 위해 -Math.PI / 2 만큼 편차 적용
+    const angle = 2 * Math.PI * percent - Math.PI / 2;
+    const x = Math.cos(angle);
+    const y = Math.sin(angle);
+    return [x, y];
+  };
+
   return (
     <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col h-full select-none">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <div>
-          <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 측정 트렌드 및 평균</h3>
+          <h3 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 측정 트렌드 및 분석</h3>
           <p className="text-lg font-bold text-zinc-800 dark:text-zinc-100 mt-1">종합 평균: <span className="text-blue-600 dark:text-blue-400 font-extrabold">{average} g</span></p>
         </div>
-        {/* 체이스 요청: 다양한 그래프 모드 전환 세그먼트 */}
-        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
-          {(['average', 'individual', 'minMax'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => {
-                setChartMode(mode);
-                setHoveredPoint(null);
-              }}
-              className={cn(
-                "px-3 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
-                chartMode === mode 
-                  ? "bg-white dark:bg-zinc-750 text-zinc-800 dark:text-zinc-100 shadow-sm" 
-                  : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-450"
-              )}
-            >
-              {mode === 'average' ? '평균 트렌드' : mode === 'individual' ? '개별 측정값' : '최소/최대 범위'}
-            </button>
-          ))}
+        
+        {/* 체이스 요청: 다양한 차트 종류 및 꺾은선 옵션 모드 결합 전환부 */}
+        <div className="flex flex-wrap gap-2">
+          {/* 차트 종류 (꺾은선 / 막대 / 원 / 3D) */}
+          <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+            {(['line', 'bar', 'pie', '3d'] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => {
+                  setChartType(type);
+                  setHoveredPoint(null);
+                }}
+                className={cn(
+                  "px-3 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                  chartType === type 
+                    ? "bg-white dark:bg-zinc-750 text-zinc-800 dark:text-zinc-100 shadow-sm" 
+                    : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-650"
+                )}
+              >
+                {type === 'line' ? '꺾은선' : type === 'bar' ? '막대' : type === 'pie' ? '원' : '입체막대(3D)'}
+              </button>
+            ))}
+          </div>
+
+          {/* 꺾은선일 때만 표시되는 상세 분석 모드 */}
+          {chartType === 'line' && (
+            <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700 animate-fadeIn">
+              {(['average', 'individual', 'minMax'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => {
+                    setChartMode(mode);
+                    setHoveredPoint(null);
+                  }}
+                  className={cn(
+                    "px-3 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                    chartMode === mode 
+                      ? "bg-white dark:bg-zinc-750 text-zinc-800 dark:text-zinc-100 shadow-sm" 
+                      : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-650"
+                  )}
+                >
+                  {mode === 'average' ? '평균' : mode === 'individual' ? '개별' : '범위'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       
@@ -336,213 +372,218 @@ const WeightChart = ({
           </div>
         ) : (
           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
-            {/* 오차 한계 기준선 렌더링 */}
-            {standardWeight && (
+            {/* SVG 그라데이션 선언 (막대 그래프용) */}
+            <defs>
+              <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#2563EB" stopOpacity="0.3" />
+              </linearGradient>
+              <linearGradient id="bar3dGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#60A5FA" />
+                <stop offset="100%" stopColor="#3B82F6" />
+              </linearGradient>
+            </defs>
+
+            {/* 오차 한계 기준선 렌더링 (원형 파이 차트가 아닐 때만 가이드용 노출) */}
+            {standardWeight && chartType !== 'pie' && (
               <>
-                {/* 상한값 선 */}
-                <line 
-                  x1={padding} 
-                  y1={getY(std + maxTolerance)} 
-                  x2={width - padding} 
-                  y2={getY(std + maxTolerance)} 
-                  stroke="var(--jt-color-error)" 
-                  strokeWidth="1" 
-                  strokeDasharray="4 4" 
-                />
-                <text x={width - padding + 5} y={getY(std + maxTolerance) + 3} fontSize="8" fill="var(--jt-color-error)">
-                  +{maxTolerance}g
-                </text>
-                {/* 정석 중량선 */}
-                <line 
-                  x1={padding} 
-                  y1={getY(std)} 
-                  x2={width - padding} 
-                  y2={getY(std)} 
-                  stroke="var(--jt-color-success)" 
-                  strokeWidth="1.5" 
-                />
-                <text x={width - padding + 5} y={getY(std) + 3} fontSize="8" fill="var(--jt-color-success)">
-                  {std}g
-                </text>
-                {/* 하한값 선 */}
-                <line 
-                  x1={padding} 
-                  y1={getY(std - minTolerance)} 
-                  x2={width - padding} 
-                  y2={getY(std - minTolerance)} 
-                  stroke="var(--jt-color-error)" 
-                  strokeWidth="1" 
-                  strokeDasharray="4 4" 
-                />
-                <text x={width - padding + 5} y={getY(std - minTolerance) + 3} fontSize="8" fill="var(--jt-color-error)">
-                  -{minTolerance}g
-                </text>
+                <line x1={padding} y1={getY(std + maxTolerance)} x2={width - padding} y2={getY(std + maxTolerance)} stroke="var(--jt-color-error)" strokeWidth="1" strokeDasharray="4 4" />
+                <text x={width - padding + 5} y={getY(std + maxTolerance) + 3} fontSize="8" fill="var(--jt-color-error)">+{maxTolerance}g</text>
+                <line x1={padding} y1={getY(std)} x2={width - padding} y2={getY(std)} stroke="var(--jt-color-success)" strokeWidth="1.5" />
+                <text x={width - padding + 5} y={getY(std) + 3} fontSize="8" fill="var(--jt-color-success)">{std}g</text>
+                <line x1={padding} y1={getY(std - minTolerance)} x2={width - padding} y2={getY(std - minTolerance)} stroke="var(--jt-color-error)" strokeWidth="1" strokeDasharray="4 4" />
+                <text x={width - padding + 5} y={getY(std - minTolerance) + 3} fontSize="8" fill="var(--jt-color-error)">-{minTolerance}g</text>
               </>
             )}
 
-            {/* X축 시간 라벨 */}
-            {measurements.map((m, idx) => (
-              <text 
-                key={m.id} 
-                x={getX(idx)} 
-                y={height - 8} 
-                fontSize="10" 
-                fill="#9DA5AF" 
-                textAnchor="middle"
-              >
-                {m.time}
-              </text>
+            {/* X축 시간 라벨 (원형 파이 차트가 아닐 때만 노출) */}
+            {chartType !== 'pie' && measurements.map((m, idx) => (
+              <text key={m.id} x={getX(idx)} y={height - 8} fontSize="10" fill="#9DA5AF" textAnchor="middle">{m.time}</text>
             ))}
 
-            {/* 중량 데이터 그리기 */}
+            {/* 중량 데이터 그래픽 렌더링 */}
             {(() => {
-              if (chartMode === 'average') {
-                const points = measurements.map((m, idx) => {
-                  const vals = m.vials.filter((v): v is number => v !== null);
-                  if (vals.length === 0) return null;
-                  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                  return { x: getX(idx), y: getY(avg), value: avg, time: m.time };
-                });
+              if (chartType === 'line') {
+                if (chartMode === 'average') {
+                  const points = measurements.map((m, idx) => {
+                    const vals = m.vials.filter((v): v is number => v !== null);
+                    if (vals.length === 0) return null;
+                    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                    return { x: getX(idx), y: getY(avg), value: avg, time: m.time };
+                  });
 
-                const pathD = points
-                  .map((p, idx) => (p ? `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}` : ''))
-                  .filter(Boolean)
-                  .join(' ');
+                  const pathD = points
+                    .map((p, idx) => (p ? `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}` : ''))
+                    .filter(Boolean)
+                    .join(' ');
 
-                return (
-                  <>
-                    {pathD && (
-                      <path 
-                        d={pathD} 
-                        fill="none" 
-                        stroke="var(--jt-color-accent)" 
-                        strokeWidth="2.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-                    )}
-                    {points.map((p, idx) => {
-                      if (!p) return null;
-                      return (
-                        <circle 
-                          key={idx} 
-                          cx={p.x} 
-                          cy={p.y} 
-                          r="5" 
-                          fill="var(--jt-color-accent)" 
-                          stroke="#ffffff" 
-                          strokeWidth="2" 
-                          className="cursor-pointer transition-all hover:scale-125"
-                          onMouseEnter={() => {
-                            setHoveredPoint({ x: p.x, y: p.y, value: p.value, label: `${p.time} 평균` });
-                          }}
-                          onMouseLeave={() => {
-                            setHoveredPoint(null);
-                          }}
-                        />
-                      );
-                    })}
-                  </>
-                );
-              } else if (chartMode === 'individual') {
-                // 개별 바이알 측정값들을 점으로 모두 뿌림
-                return (
-                  <>
-                    {measurements.flatMap((m, idx) => {
-                      const x = getX(idx);
-                      const vals = m.vials.filter((v): v is number => v !== null);
-                      return vals.map((val, vIdx) => {
-                        const y = getY(val);
+                  return (
+                    <>
+                      {pathD && <path d={pathD} fill="none" stroke="var(--jt-color-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+                      {points.map((p, idx) => {
+                        if (!p) return null;
                         return (
-                          <circle
-                            key={`${idx}-${vIdx}`}
-                            cx={x}
-                            cy={y}
-                            r="4"
-                            fill="var(--jt-color-accent)"
-                            fillOpacity="0.5"
-                            stroke="#ffffff"
-                            strokeWidth="1"
-                            className="cursor-pointer transition-all hover:scale-125"
-                            onMouseEnter={() => {
-                              setHoveredPoint({ x, y, value: val, label: `${m.time} 측정 (#${vIdx + 1})` });
-                            }}
-                            onMouseLeave={() => {
-                              setHoveredPoint(null);
-                            }}
-                          />
+                          <g key={idx}>
+                            <circle cx={p.x} cy={p.y} r="5" fill="var(--jt-color-accent)" stroke="#ffffff" strokeWidth="2" className="pointer-events-none" />
+                            <circle cx={p.x} cy={p.y} r="15" fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x: p.x, y: p.y, value: p.value, label: `${p.time} 평균` })} onMouseLeave={() => setHoveredPoint(null)} />
+                          </g>
                         );
-                      });
-                    })}
-                  </>
-                );
-              } else if (chartMode === 'minMax') {
-                // 최소-최대 범위 + 평균값 점
+                      })}
+                    </>
+                  );
+                } else if (chartMode === 'individual') {
+                  return (
+                    <>
+                      {measurements.flatMap((m, idx) => {
+                        const x = getX(idx);
+                        const vals = m.vials.filter((v): v is number => v !== null);
+                        return vals.map((val, vIdx) => {
+                          const y = getY(val);
+                          return (
+                            <g key={`${idx}-${vIdx}`}>
+                              <circle cx={x} cy={y} r="4" fill="var(--jt-color-accent)" fillOpacity="0.5" stroke="#ffffff" strokeWidth="1" className="pointer-events-none" />
+                              <circle cx={x} cy={y} r="12" fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x, y, value: val, label: `${m.time} 측정 (#${vIdx + 1})` })} onMouseLeave={() => setHoveredPoint(null)} />
+                            </g>
+                          );
+                        });
+                      })}
+                    </>
+                  );
+                } else if (chartMode === 'minMax') {
+                  return (
+                    <>
+                      {measurements.map((m, idx) => {
+                        const x = getX(idx);
+                        const vals = m.vials.filter((v): v is number => v !== null);
+                        if (vals.length === 0) return null;
+                        const min = Math.min(...vals);
+                        const max = Math.max(...vals);
+                        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                        const yMin = getY(min);
+                        const yMax = getY(max);
+                        const yAvg = getY(avg);
+
+                        return (
+                          <g key={idx}>
+                            <line x1={x} y1={yMin} x2={x} y2={yMax} stroke="var(--jt-color-accent)" strokeWidth="2.5" strokeLinecap="round" opacity="0.35" />
+                            <line x1={x - 4} y1={yMin} x2={x + 4} y2={yMin} stroke="var(--jt-color-accent)" strokeWidth="1.5" opacity="0.5" />
+                            <line x1={x - 4} y1={yMax} x2={x + 4} y2={yMax} stroke="var(--jt-color-accent)" strokeWidth="1.5" opacity="0.5" />
+                            <circle cx={x} cy={yAvg} r="5" fill="var(--jt-color-accent)" stroke="#ffffff" strokeWidth="2" className="pointer-events-none" />
+                            <circle cx={x} cy={yAvg} r="15" fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x, y: yAvg, value: avg, label: `${m.time} 범위 [${min.toFixed(2)}~${max.toFixed(2)}]` })} onMouseLeave={() => setHoveredPoint(null)} />
+                          </g>
+                        );
+                      })}
+                    </>
+                  );
+                }
+              } else if (chartType === 'bar') {
+                const barWidth = Math.min(30, (chartWidth / measurements.length) * 0.5);
                 return (
                   <>
                     {measurements.map((m, idx) => {
-                      const x = getX(idx);
                       const vals = m.vials.filter((v): v is number => v !== null);
                       if (vals.length === 0) return null;
-                      const min = Math.min(...vals);
-                      const max = Math.max(...vals);
                       const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                      
-                      const yMin = getY(min);
-                      const yMax = getY(max);
-                      const yAvg = getY(avg);
-
+                      const x = getX(idx);
+                      const y = getY(avg);
+                      const barHeight = height - padding - y;
                       return (
                         <g key={idx}>
-                          {/* 최소-최대 범위 세로선 */}
-                          <line
-                            x1={x}
-                            y1={yMin}
-                            x2={x}
-                            y2={yMax}
-                            stroke="var(--jt-color-accent)"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            opacity="0.35"
-                          />
-                          {/* 범위 경계 가로선 */}
-                          <line x1={x - 4} y1={yMin} x2={x + 4} y2={yMin} stroke="var(--jt-color-accent)" strokeWidth="1.5" opacity="0.5" />
-                          <line x1={x - 4} y1={yMax} x2={x + 4} y2={yMax} stroke="var(--jt-color-accent)" strokeWidth="1.5" opacity="0.5" />
-                          
-                          {/* 평균값 점 */}
-                          <circle
-                            cx={x}
-                            cy={yAvg}
-                            r="5"
-                            fill="var(--jt-color-accent)"
-                            stroke="#ffffff"
-                            strokeWidth="2"
-                            className="cursor-pointer transition-all hover:scale-125"
-                            onMouseEnter={() => {
-                              setHoveredPoint({ 
-                                x, 
-                                y: yAvg, 
-                                value: avg, 
-                                label: `${m.time} 범위 [${min.toFixed(2)}~${max.toFixed(2)}]`
-                              });
-                            }}
-                            onMouseLeave={() => {
-                              setHoveredPoint(null);
-                            }}
-                          />
+                          <rect x={x - barWidth / 2} y={y} width={barWidth} height={barHeight} fill="url(#barGrad)" rx="4" className="pointer-events-none" />
+                          <circle cx={x} cy={y} r="15" fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x, y, value: avg, label: `${m.time} 평균` })} onMouseLeave={() => setHoveredPoint(null)} />
                         </g>
                       );
                     })}
                   </>
                 );
+              } else if (chartType === '3d') {
+                const barWidth = Math.min(22, (chartWidth / measurements.length) * 0.45);
+                const dx = 5;
+                const dy = 5;
+                return (
+                  <>
+                    {measurements.map((m, idx) => {
+                      const vals = m.vials.filter((v): v is number => v !== null);
+                      if (vals.length === 0) return null;
+                      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                      const x = getX(idx);
+                      const y = getY(avg);
+                      const yBaseline = height - padding;
+                      const left = x - barWidth / 2;
+                      const rectHeight = yBaseline - y;
+                      const topPoints = [`${left},${y}`, `${left + dx},${y - dy}`, `${left + barWidth + dx},${y - dy}`, `${left + barWidth},${y}`].join(' ');
+                      const rightPoints = [`${left + barWidth},${y}`, `${left + barWidth + dx},${y - dy}`, `${left + barWidth + dx},${yBaseline - dy}`, `${left + barWidth},${yBaseline}`].join(' ');
+                      return (
+                        <g key={idx}>
+                          <polygon points={topPoints} fill="#93C5FD" className="pointer-events-none" />
+                          <polygon points={rightPoints} fill="#1D4ED8" className="pointer-events-none" />
+                          <rect x={left} y={y} width={barWidth} height={rectHeight} fill="url(#bar3dGrad)" className="pointer-events-none" />
+                          <circle cx={x + dx / 2} cy={y - dy / 2} r="15" fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x: x + dx / 2, y: y - dy / 2, value: avg, label: `${m.time} 평균(3D)` })} onMouseLeave={() => setHoveredPoint(null)} />
+                        </g>
+                      );
+                    })}
+                  </>
+                );
+              } else if (chartType === 'pie') {
+                if (!standardWeight) return null;
+                const stdVal = standardWeight;
+                const minTol = underweightTolerance || 0;
+                const maxTol = overweightTolerance || 0;
+                let fit = 0, under = 0, over = 0;
+                validWeights.forEach((w) => {
+                  if (w < stdVal - minTol) under++;
+                  else if (w > stdVal + maxTol) over++;
+                  else fit++;
+                });
+                const total = fit + under + over || 1;
+                const slices = [
+                  { value: fit, percent: fit / total, color: '#10B981', label: '적합 범위' },
+                  { value: under, percent: under / total, color: '#EF4444', label: '하한 미달' },
+                  { value: over, percent: over / total, color: '#F59E0B', label: '상한 초과' }
+                ];
+                const cx = width / 2;
+                const cy = height / 2;
+                const r = height / 2.6;
+                let accumulatedPercent = 0;
+                return (
+                  <g>
+                    {slices.map((slice, sIdx) => {
+                      if (slice.percent === 0) return null;
+                      if (slice.percent >= 0.999) {
+                        return (
+                          <g key={sIdx}>
+                            <circle cx={cx} cy={cy} r={r} fill={slice.color} className="pointer-events-none" />
+                            <circle cx={cx} cy={cy} r={r} fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x: cx, y: cy, value: slice.percent * 100, label: `${slice.label} (${slice.value}개)` })} onMouseLeave={() => setHoveredPoint(null)} />
+                          </g>
+                        );
+                      }
+                      const startPercent = accumulatedPercent;
+                      accumulatedPercent += slice.percent;
+                      const start = getCoordinatesForPercent(startPercent);
+                      const end = getCoordinatesForPercent(accumulatedPercent);
+                      const x1 = cx + start[0] * r;
+                      const y1 = cy + start[1] * r;
+                      const x2 = cx + end[0] * r;
+                      const y2 = cy + end[1] * r;
+                      const pathData = [`M ${cx} ${cy}`, `L ${x1} ${y1}`, `A ${r} ${r} 0 ${slice.percent > 0.5 ? 1 : 0} 1 ${x2} ${y2}`, 'Z'].join(' ');
+                      const middle = getCoordinatesForPercent(startPercent + slice.percent / 2);
+                      return (
+                        <g key={sIdx}>
+                          <path d={pathData} fill={slice.color} stroke="#ffffff" strokeWidth="1.5" className="pointer-events-none" />
+                          <path d={pathData} fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x: cx + middle[0] * (r * 0.75), y: cy + middle[1] * (r * 0.75), value: slice.percent * 100, label: `${slice.label} (${slice.value}개)` })} onMouseLeave={() => setHoveredPoint(null)} />
+                        </g>
+                      );
+                    })}
+                  </g>
+                );
               }
               return null;
             })()}
 
-            {/* SVG 내부에 일치화된 반응형 툴팁 오버레이 */}
+            {/* SVG 내부에 일치화된 반응형 툴팁 오버레이 (pointer-events-none 적용으로 호버 간섭 완전 소멸) */}
             {hoveredPoint && (
-              <g pointerEvents="none">
-                {/* 툴팁 말풍선 배경 (그림자 효과 포함) */}
+              <g style={{ pointerEvents: 'none' }} className="pointer-events-none">
+                {/* 툴팁 말풍선 배경 */}
                 <rect 
                   x={hoveredPoint.x - 65} 
                   y={hoveredPoint.y - 45} 
@@ -570,7 +611,7 @@ const WeightChart = ({
                   fill="#ffffff" 
                   textAnchor="middle"
                 >
-                  {hoveredPoint.value.toFixed(2)} g
+                  {chartType === 'pie' ? `${hoveredPoint.value.toFixed(1)}%` : `${hoveredPoint.value.toFixed(2)} g`}
                 </text>
                 {/* 툴팁 꼬리삼각형 */}
                 <polygon 
@@ -817,87 +858,92 @@ const PrintReportTemplate = ({
               </div>
 
               {/* 결재란 (오른쪽 배치) */}
-              <table className="border-collapse border border-black text-xs text-center w-[180px]">
+              <table className="border-collapse border border-black text-xs text-center w-[180px]" style={{ border: '1px solid #000000' }}>
                 <tbody>
                   <tr>
-                    <td rowSpan={3} className="border border-black font-bold px-2 py-4 w-[30px] bg-zinc-50">결재</td>
-                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">작성</td>
-                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">검토</td>
-                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50">승인</td>
+                    <td rowSpan={isPreview ? 3 : 2} className="border border-black font-bold px-2 py-4 w-[30px] bg-zinc-50" style={{ border: '1px solid #000000' }}>결재</td>
+                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50" style={{ border: '1px solid #000000' }}>작성</td>
+                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50" style={{ border: '1px solid #000000' }}>검토</td>
+                    <td className="border border-black font-bold py-1 w-[50px] bg-zinc-50" style={{ border: '1px solid #000000' }}>승인</td>
                   </tr>
-                  <tr className="h-[45px]">
+                  <tr style={{ height: isPreview ? '45px' : '65px' }}>
                     <td 
                       className={cn("border border-black py-1 relative select-none", isPreview && "cursor-pointer hover:bg-zinc-50")}
+                      style={{ border: '1px solid #000000' }}
                       onClick={() => isPreview && onSignClick && onSignClick('writer')}
                     >
                       {signatures?.writer ? (
                         <img src={signatures.writer} alt="작성 서명" className="w-full h-full object-contain max-h-[40px] mx-auto pointer-events-none" />
                       ) : (
-                        isPreview && <span className="text-[9px] text-zinc-300">클릭 서명</span>
+                        isPreview && <span className="text-[9px] text-zinc-300">서명</span>
                       )}
                     </td>
                     <td 
                       className={cn("border border-black py-1 relative select-none", isPreview && "cursor-pointer hover:bg-zinc-50")}
+                      style={{ border: '1px solid #000000' }}
                       onClick={() => isPreview && onSignClick && onSignClick('reviewer')}
                     >
                       {signatures?.reviewer ? (
                         <img src={signatures.reviewer} alt="검토 서명" className="w-full h-full object-contain max-h-[40px] mx-auto pointer-events-none" />
                       ) : (
-                        isPreview && <span className="text-[9px] text-zinc-300">클릭 서명</span>
+                        isPreview && <span className="text-[9px] text-zinc-300">서명</span>
                       )}
                     </td>
                     <td 
                       className={cn("border border-black py-1 relative select-none", isPreview && "cursor-pointer hover:bg-zinc-50")}
+                      style={{ border: '1px solid #000000' }}
                       onClick={() => isPreview && onSignClick && onSignClick('approver')}
                     >
                       {signatures?.approver ? (
                         <img src={signatures.approver} alt="승인 서명" className="w-full h-full object-contain max-h-[40px] mx-auto pointer-events-none" />
                       ) : (
-                        isPreview && <span className="text-[9px] text-zinc-300">클릭 서명</span>
+                        isPreview && <span className="text-[9px] text-zinc-300">서명</span>
                       )}
                     </td>
                   </tr>
-                  <tr className="h-[20px]">
-                    <td className="border border-black text-[8px]">
-                      {signatures?.writer && isPreview ? (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSignClick && onSignClick('writer-clear');
-                          }} 
-                          className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
-                        >
-                          지우기
-                        </button>
-                      ) : null}
-                    </td>
-                    <td className="border border-black text-[8px]">
-                      {signatures?.reviewer && isPreview ? (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSignClick && onSignClick('reviewer-clear');
-                          }} 
-                          className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
-                        >
-                          지우기
-                        </button>
-                      ) : null}
-                    </td>
-                    <td className="border border-black text-[8px]">
-                      {signatures?.approver && isPreview ? (
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSignClick && onSignClick('approver-clear');
-                          }} 
-                          className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
-                        >
-                          지우기
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
+                  {isPreview && (
+                    <tr className="h-[20px]">
+                      <td className="border border-black text-[8px]" style={{ border: '1px solid #000000' }}>
+                        {signatures?.writer ? (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSignClick && onSignClick('writer-clear');
+                            }} 
+                            className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
+                          >
+                            지우기
+                          </button>
+                        ) : null}
+                      </td>
+                      <td className="border border-black text-[8px]" style={{ border: '1px solid #000000' }}>
+                        {signatures?.reviewer ? (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSignClick && onSignClick('reviewer-clear');
+                            }} 
+                            className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
+                          >
+                            지우기
+                          </button>
+                        ) : null}
+                      </td>
+                      <td className="border border-black text-[8px]" style={{ border: '1px solid #000000' }}>
+                        {signatures?.approver ? (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSignClick && onSignClick('approver-clear');
+                            }} 
+                            className="text-[9px] text-red-500 hover:underline font-bold cursor-pointer"
+                          >
+                            지우기
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1532,6 +1578,19 @@ function AppContent() {
       setIsAdminMode(true);
     }
   }, [user]);
+
+  // 체이스 요청: 전자 서명 이미지 상태 및 활성화 모달 상태 정의
+  const [signatures, setSignatures] = useState({ writer: '', reviewer: '', approver: '' });
+  const [activeSignType, setActiveSignType] = useState<'writer' | 'reviewer' | 'approver' | null>(null);
+
+  const handleSignClick = (type: 'writer' | 'reviewer' | 'approver' | 'writer-clear' | 'reviewer-clear' | 'approver-clear') => {
+    if (type.endsWith('-clear')) {
+      const target = type.replace('-clear', '') as 'writer' | 'reviewer' | 'approver';
+      setSignatures(prev => ({ ...prev, [target]: '' }));
+    } else {
+      setActiveSignType(type as 'writer' | 'reviewer' | 'approver');
+    }
+  };
 
   const [record, setRecord] = useState<FillingRecord>({
     id: Math.random().toString(36).substr(2, 9),
@@ -2262,9 +2321,9 @@ function AppContent() {
   return (
     <div className="min-h-screen flex bg-[var(--jt-color-bg-layout)] text-[var(--jt-color-text)] font-sans">
       
-      {/* ── 1. 왼쪽 세로형 사이드바 (인쇄 시 숨김) ── */}
+      {/* ── 1. 왼쪽 세로형 사이드바 (인쇄 시 숨김, 모바일 시 숨김) ── */}
       <aside className={cn(
-        "bg-white dark:bg-zinc-900 border-r border-[var(--jt-color-border)] dark:border-zinc-800 flex flex-col gap-6 shrink-0 print-hidden justify-between transition-all duration-300",
+        "hidden md:flex bg-white dark:bg-zinc-900 border-r border-[var(--jt-color-border)] dark:border-zinc-800 flex flex-col gap-6 shrink-0 print-hidden justify-between transition-all duration-300",
         isSidebarCollapsed ? "w-20 p-4" : "w-64 p-6"
       )}>
         <div className="space-y-6 w-full">
@@ -2466,10 +2525,58 @@ function AppContent() {
         </div>
       </aside>
 
-      {/* ── 2. 메인 콘텐츠 영역 (인쇄 시 숨김) ── */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto overflow-x-auto space-y-6 print-hidden">
-        {/* 상단 가운데 정렬 제목 */}
-        <header className="text-center py-4 border-b border-[var(--jt-color-border)]">
+      {/* ── 2. 메인 콘텐츠 영역 (인쇄 시 숨김, 하단 바텀 바 높이를 위한 pb-20 모바일 대응) ── */}
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto overflow-x-auto space-y-6 pb-24 md:pb-8 print-hidden">
+        {/* ── 체이스 요청: 모바일 전용 상단 헤더 바 ── */}
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-[var(--jt-color-border)] dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-30 -mx-6 -mt-6 mb-6 select-none shrink-0">
+          <div className="flex items-center gap-3">
+            <img 
+              src="/brand/logo/logo-mark.svg?v=2" 
+              alt="Zenitry Logo" 
+              className="h-7 w-auto object-contain cursor-pointer" 
+              onClick={handleGoDashboard}
+            />
+            <h1 className="text-base font-black text-[var(--jt-color-text)] tracking-tight">
+              자주측정 ({record.mainMode})
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* 모바일 뷰에서도 분류 모드 토글 제공 */}
+            <div className="flex bg-[var(--jt-color-primary-bg)] p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+              {(['충진', '포장'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setRecord(prev => ({ ...prev, mainMode: m }))}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                    record.mainMode === m 
+                      ? "bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 shadow-sm" 
+                      : "text-zinc-500 hover:text-zinc-700"
+                  )}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            {user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase().trim()) && (
+              <button
+                onClick={() => setIsAdminMode(prev => !prev)}
+                className={cn(
+                  "p-1.5 rounded-lg border transition-all cursor-pointer",
+                  isAdminMode 
+                    ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400" 
+                    : "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300"
+                )}
+                title={isAdminMode ? "관리자 설정 잠금" : "관리자 설정 잠금 해제"}
+              >
+                {isAdminMode ? <Unlock size={12} /> : <Lock size={12} />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 데스크톱 상단 가운데 정렬 제목 (모바일 시 감춤) */}
+        <header className="hidden md:block text-center py-4 border-b border-[var(--jt-color-border)]">
           <h1 className="text-2xl font-black tracking-tight text-[var(--jt-color-text)]">
             충진품 자주측정 ({record.mainMode})
           </h1>
@@ -3560,7 +3667,12 @@ function AppContent() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-8 bg-zinc-100 dark:bg-zinc-950 flex flex-col items-center gap-6">
-                <PrintReportTemplate record={record} isPreview={true} />
+                <PrintReportTemplate 
+                  record={record} 
+                  isPreview={true} 
+                  signatures={signatures} 
+                  onSignClick={handleSignClick} 
+                />
               </div>
 
               <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-end gap-3">
@@ -3589,7 +3701,23 @@ function AppContent() {
       </AnimatePresence>
 
       {/* ── 6. 인쇄 시에만 나타나는 프린트 템플릿 컴포넌트 ── */}
-      <PrintReportTemplate record={record} />
+      <PrintReportTemplate record={record} signatures={signatures} />
+
+      {/* ── 체이스 요청: 전자 서명 모달 ── */}
+      <SignatureModal
+        isOpen={activeSignType !== null}
+        onClose={() => setActiveSignType(null)}
+        onSave={(dataUrl) => {
+          if (activeSignType) {
+            setSignatures(prev => ({ ...prev, [activeSignType]: dataUrl }));
+          }
+        }}
+        title={
+          activeSignType === 'writer' ? '작성자' :
+          activeSignType === 'reviewer' ? '검토자' :
+          activeSignType === 'approver' ? '승인자' : ''
+        }
+      />
 
       {/* ── 체이스 요청: 공용 내부 알림 모달 (alertModal) ── */}
       <AnimatePresence>
@@ -3639,6 +3767,87 @@ function AppContent() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── 체이스 요청: 모바일 전용 하단 고정 바텀 탭 바 (아이콘 메뉴) ── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-md border-t border-[var(--jt-color-border)] dark:border-zinc-800 px-4 py-2 flex justify-around items-center z-45 print-hidden shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <button 
+          onClick={resetForm}
+          className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 cursor-pointer transition-colors"
+          title="새 기록"
+        >
+          <Plus size={20} />
+          <span className="text-[9px] font-bold">새 기록</span>
+        </button>
+        
+        <button 
+          onClick={saveRecord}
+          disabled={isSaving || !user || record.isDeleted}
+          className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 disabled:opacity-30 cursor-pointer transition-colors"
+          title="저장"
+        >
+          {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+          <span className="text-[9px] font-bold">저장</span>
+        </button>
+
+        <button 
+          onClick={() => setShowHistory(!showHistory)}
+          className={cn(
+            "flex flex-col items-center gap-0.5 cursor-pointer transition-colors",
+            showHistory ? "text-blue-600 dark:text-blue-400 font-extrabold" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+          )}
+          title="기록 내역"
+        >
+          <History size={20} />
+          <span className="text-[9px] font-bold">기록 내역</span>
+        </button>
+
+        <button 
+          onClick={() => {
+            if (!user) {
+              showAlert('환경설정을 변경하려면 먼저 구글 로그인을 해주세요.', 'info', '로그인 필요');
+              return;
+            }
+            setShowSettings(true);
+          }}
+          className={cn(
+            "flex flex-col items-center gap-0.5 cursor-pointer transition-colors",
+            showSettings ? "text-blue-600 dark:text-blue-400 font-extrabold" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400"
+          )}
+          title="설정"
+        >
+          <Settings size={20} />
+          <span className="text-[9px] font-bold">설정</span>
+        </button>
+
+        <button 
+          onClick={() => setShowPrintPreview(true)}
+          className="flex flex-col items-center gap-0.5 text-blue-600 dark:text-blue-400 font-extrabold cursor-pointer transition-colors"
+          title="보고서 발행"
+        >
+          <CheckCircle2 size={20} />
+          <span className="text-[9px] font-bold">발행</span>
+        </button>
+
+        {user ? (
+          <button 
+            onClick={handleLogout}
+            className="flex flex-col items-center gap-0.5 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 cursor-pointer transition-colors"
+            title={`${user.displayName} 로그아웃`}
+          >
+            <LogOut size={20} className="text-red-500" />
+            <span className="text-[9px] font-bold text-red-500">로그아웃</span>
+          </button>
+        ) : (
+          <button 
+            onClick={handleLogin}
+            className="flex flex-col items-center gap-0.5 text-zinc-800 dark:text-zinc-200 cursor-pointer transition-colors"
+            title="구글 로그인"
+          >
+            <LogIn size={20} className="text-zinc-850 dark:text-zinc-100" />
+            <span className="text-[9px] font-bold">로그인</span>
+          </button>
+        )}
+      </div>
 
     </div>
 
