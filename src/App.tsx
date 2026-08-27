@@ -1160,7 +1160,7 @@ const NumberInputWithButtons = ({
           setLocalValue(value !== null ? value.toFixed(1) : '');
         }}
         className={cn(
-          "bg-transparent border-none focus:ring-0 text-center text-[var(--jt-fs-base)] w-full p-1",
+          "bg-transparent border-none focus:ring-0 text-center text-[15px] font-bold w-full p-1",
           inputClassName
         )}
         placeholder={placeholder}
@@ -1189,7 +1189,7 @@ const StatusToggle = ({
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "w-full h-[var(--control-height)] pl-2 pr-6 rounded-lg text-[var(--jt-fs-sm)] font-bold transition-all border appearance-none cursor-pointer focus:ring-2 focus:ring-[var(--jt-color-primary-bg)] outline-none",
+          "w-full h-[var(--control-height)] pl-2 pr-6 rounded-lg text-[13px] font-extrabold transition-all border appearance-none cursor-pointer focus:ring-2 focus:ring-[var(--jt-color-primary-bg)] outline-none",
           value === '불량' 
             ? "bg-[var(--jt-color-error-bg)] border-[var(--jt-color-error-border)] text-[var(--jt-color-error-text)] font-extrabold" 
             : value === '정상'
@@ -1266,7 +1266,7 @@ const MeasurementRow = ({
             onClick={toggleExpand}
             className="flex flex-col items-center justify-center w-full group"
           >
-            <span className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{measurement.time}</span>
+            <span className="font-mono text-[14px] font-bold text-zinc-700 dark:text-zinc-300">{measurement.time}</span>
             <div className={cn(
               "mt-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-all",
               measurement.isExpanded && "bg-zinc-800 dark:bg-zinc-700 text-white dark:text-zinc-100 group-hover:bg-zinc-700 dark:group-hover:bg-zinc-600"
@@ -2224,7 +2224,7 @@ function AppContent() {
           <div className="flex items-center justify-between pb-4 border-b border-[var(--jt-color-border)] dark:border-zinc-800 w-full select-none">
             {!isSidebarCollapsed && (
               <img 
-                src={isDarkMode ? "/brand/logo/logo-h-light.svg?v=2" : "/brand/logo/logo-h.svg?v=2"} 
+                src="/brand/logo/logo-h.svg?v=2" 
                 alt="Zenitry Logo" 
                 className="h-[26px] w-auto object-contain cursor-pointer" 
                 onClick={handleGoDashboard}
@@ -2233,7 +2233,7 @@ function AppContent() {
             )}
             {isSidebarCollapsed && (
               <img 
-                src={isDarkMode ? "/brand/logo/logo-mark-light.svg?v=2" : "/brand/logo/logo-mark.svg?v=2"} 
+                src="/brand/logo/logo-mark.svg?v=2" 
                 alt="Zenitry Logo" 
                 className="h-[26px] w-auto object-contain cursor-pointer mx-auto" 
                 onClick={handleGoDashboard}
@@ -2500,7 +2500,7 @@ function AppContent() {
               <>
                 <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                  <label className="text-[13px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                     <Package size={12} /> 품목명
                   </label>
                   <select
@@ -2519,7 +2519,7 @@ function AppContent() {
                         setRecord({ ...record, itemName: e.target.value });
                       }
                     }}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                   >
                     <option value="">품목 선택...</option>
                     {settings.items.map((item, idx) => (
@@ -2532,34 +2532,34 @@ function AppContent() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                  <label className="text-[13px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                     <Hash size={12} /> 로트번호
                   </label>
                   <input
                     type="text"
                     value={record.lotNumber}
                     onChange={(e) => setRecord({ ...record, lotNumber: e.target.value })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                     placeholder="예: LOT20240326"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                  <label className="text-[13px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                     <Calendar size={12} /> {record.mainMode === '포장' ? '포장일' : '충진일'}
                   </label>
                   <input
                     type="date"
                     value={record.fillingDate}
                     onChange={(e) => setRecord({ ...record, fillingDate: e.target.value })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                   />
                 </div>
 
                 {record.mainMode === '충진' && record.subMode === '충진1' ? (
                   <div className="space-y-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                      <label className="text-[13px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                         <Weight size={12} /> 정식중량 (g)
                       </label>
                       <NumberInputWithButtons
@@ -2567,12 +2567,12 @@ function AppContent() {
                         onChange={(val) => setRecord({ ...record, standardWeight: val })}
                         step={0.1}
                         placeholder="0.0"
-                        className="bg-zinc-50 border-transparent"
+                        className="bg-zinc-50 border-transparent text-[14px] font-bold"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                        <label className="text-[13px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                           <Percent size={12} /> 중량미달 (±g)
                         </label>
                         <NumberInputWithButtons
@@ -2580,11 +2580,11 @@ function AppContent() {
                           onChange={(val) => setRecord({ ...record, underweightTolerance: val })}
                           step={0.1}
                           placeholder="0.0"
-                          className="bg-zinc-50 border-transparent"
+                          className="bg-zinc-50 border-transparent text-[14px] font-bold"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                        <label className="text-[13px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                           <Percent size={12} /> 중량초과 (±g)
                         </label>
                         <NumberInputWithButtons
@@ -2592,7 +2592,7 @@ function AppContent() {
                           onChange={(val) => setRecord({ ...record, overweightTolerance: val })}
                           step={0.1}
                           placeholder="0.0"
-                          className="bg-zinc-50 border-transparent"
+                          className="bg-zinc-50 border-transparent text-[14px] font-bold"
                         />
                       </div>
                     </div>
@@ -2601,13 +2601,13 @@ function AppContent() {
 
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                    <label className="text-[13px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                       <User size={12} /> 측정자
                     </label>
                     <select
                       value={record.verifier}
                       onChange={(e) => setRecord({ ...record, verifier: e.target.value })}
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                     >
                       <option value="">선택...</option>
                       {(settings.verifiers || []).map((verItem, i) => {
@@ -2617,13 +2617,13 @@ function AppContent() {
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1">
+                    <label className="text-[13px] font-extrabold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
                       <User size={12} /> 확인자
                     </label>
                     <select
                       value={record.operator}
                       onChange={(e) => setRecord({ ...record, operator: e.target.value })}
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
                     >
                       <option value="">선택...</option>
                       {(settings.operators || []).map((opItem, i) => {
@@ -2635,7 +2635,7 @@ function AppContent() {
                 </div>
               </div>
             
-            <div className="bg-zinc-800 text-white p-4 rounded-2xl shadow-sm space-y-2 text-xs">
+            <div className="bg-zinc-800 text-white p-4 rounded-2xl shadow-sm space-y-2 text-xs mt-6">
               <div className="flex items-center gap-2 mb-1">
                 <AlertCircle size={14} className="text-zinc-400" />
                 <span className="font-bold">계측 핵심 가이드</span>
@@ -2685,7 +2685,7 @@ function AppContent() {
                 record.mainMode === '포장' ? "min-w-[1950px]" : "min-w-[830px]"
               )}>
                 <thead>
-                  <tr className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                  <tr className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 text-sm font-extrabold text-zinc-600 dark:text-zinc-300">
                     <th className="p-3 text-center w-20">시간</th>
                     {record.mainMode === '충진' && record.subMode === '충진1' && (
                       <>
@@ -2709,7 +2709,7 @@ function AppContent() {
                       </>
                     )}
                   </tr>
-                  <tr className="bg-zinc-50/50 dark:bg-zinc-800/50 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400 dark:text-zinc-500">
+                  <tr className="bg-zinc-50/50 dark:bg-zinc-800/50 border-b border-zinc-100 dark:border-zinc-800 text-[12px] font-bold text-zinc-500 dark:text-zinc-400">
                     <th className="p-2 text-center">Time</th>
                     {record.mainMode === '충진' && record.subMode === '충진1' && (
                       <>
