@@ -1659,27 +1659,29 @@ function AppContent() {
   // Auth Listener (체이스 요청: 구글 로그인 이메일 권한 검증 기능 탑재)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      // 0. 만약 로컬에 이미 공식 관리자 세션이 설정되어 있다면,
-      // 파이어베이스가 비동기/지연 로딩으로 가져오는 잘못된 이전 계정(u) 세션을 강제 무시/로그아웃 처리한다.
-      const cachedUserStr = localStorage.getItem('jt_session_user');
-      if (cachedUserStr) {
+      const clearSessionAndLogOut = async () => {
         try {
-          const cachedUser = JSON.parse(cachedUserStr);
-          if (cachedUser?.email && ADMIN_EMAILS.includes(cachedUser.email.toLowerCase().trim())) {
-            // 파이어베이스 내부적으로 잘못된 타 계정이 걸쳐져 있다면 선제 로그아웃 (우회 세션은 보존)
-            if (u && u.email && !ADMIN_EMAILS.includes(u.email.toLowerCase().trim())) {
-              await signOut(auth);
+          await signOut(auth);
+          indexedDB.deleteDatabase("firebaseLocalStorageDb");
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('firebase:authUser') || key.includes('firebase'))) {
+              localStorage.removeItem(key);
             }
-            setUser(cachedUser);
-            setIsAuthReady(true);
-            setRecord(prev => ({ ...prev, uid: cachedUser.uid }));
-            setSettings(prev => ({ ...prev, uid: cachedUser.uid }));
-            setIsAdminMode(true);
-            return;
           }
+          sessionStorage.clear();
+          localStorage.removeItem('jt_session_user');
         } catch (e) {
-          console.error("Session guard error:", e);
+          console.error("선제 초기화 실패:", e);
         }
+        setUser(null);
+        setIsAuthReady(true);
+      };
+
+      // 만약 과거에 저장된 가짜 우회 세션(mockAdminUser)이 로컬에 남아 있다면, 
+      // Firestore 통신 에러를 유발하므로 발견 즉시 파기한다.
+      if (localStorage.getItem('jt_session_user')) {
+        await clearSessionAndLogOut();
       }
 
       if (u) {
@@ -1830,35 +1832,18 @@ function AppContent() {
       } catch (error: any) {
         console.error("Redirect login failed:", error);
         
-        // 중요: 사용자가 실제로 로그인 버튼을 누르고 리다이렉트되던 도중 실패(차단 등)한 경우에만 마스터 관리자 세션 우회 적용
+        // 로그인에 실패한 경우 세션 마커를 제거하고 사용자에게 명확히 안내
         const isLoggingIn = sessionStorage.getItem('jt_is_logging_in') === 'true';
         if (isLoggingIn) {
-          const mockAdminUser = {
-            uid: 'admin-pro9-janytree-com',
-            email: 'pro9@janytree.com',
-            displayName: '관리자',
-            photoURL: null,
-            emailVerified: true
-          };
-          
-          localStorage.setItem('jt_session_user', JSON.stringify(mockAdminUser));
-          setUser(mockAdminUser as any);
-          setIsAuthReady(true);
-          setRecord(prev => ({ ...prev, uid: mockAdminUser.uid }));
-          setSettings(prev => ({ ...prev, uid: mockAdminUser.uid }));
-          setIsAdminMode(true);
           sessionStorage.removeItem('jt_is_logging_in');
-          
           showAlert(
-            "구글 로그인 정책으로 차단되어, 최고 관리자(pro9@janytree.com) 임시 세션으로 안전하게 로그인 처리되었습니다.",
-            "info",
-            "관리자 세션 로그인"
+            "로그인에 실패했습니다. (Firebase 콘솔 > Authentication > 설정 > 승인된 도메인에 현재 도메인이 추가되어 있는지 확인해 주세요.)",
+            "error",
+            "로그인 에러"
           );
-        } else {
-          // 단순 첫 페이지 진입 시 리다이렉트 결과 처리 에러는 조용히 무시하고 안전하게 로그아웃/비로그인 상태 유지
-          setUser(null);
-          setIsAuthReady(true);
         }
+        setUser(null);
+        setIsAuthReady(true);
       }
     };
     handleRedirect();
