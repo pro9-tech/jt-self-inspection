@@ -1629,6 +1629,7 @@ function AppContent() {
   const [filterMode, setFilterMode] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [graphDataMode, setGraphDataMode] = useState<'daily' | 'overall'>('daily');
 
   // --- 체이스 요청: 앱 내부 알림 모달 및 관리자 모드 상태 정의 ── //
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -2315,6 +2316,7 @@ function AppContent() {
                 src="/brand/logo/logo-h.svg?v=2" 
                 alt="Zenitry Logo" 
                 className="h-[26px] w-auto object-contain cursor-pointer" 
+                style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0)' }}
                 onClick={handleGoDashboard}
                 title="대시보드로 이동"
               />
@@ -2324,6 +2326,7 @@ function AppContent() {
                 src="/brand/logo/logo-mark.svg?v=2" 
                 alt="Zenitry Logo" 
                 className="h-[26px] w-auto object-contain cursor-pointer mx-auto" 
+                style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0)' }}
                 onClick={handleGoDashboard}
                 title="대시보드로 이동"
               />
@@ -2514,6 +2517,7 @@ function AppContent() {
             src="/brand/logo/logo-mark.svg?v=2" 
             alt="Zenitry Logo" 
             className="h-10 w-10 object-contain cursor-pointer shrink-0" 
+            style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0)' }}
             onClick={handleGoDashboard}
           />
           
@@ -2807,7 +2811,26 @@ function AppContent() {
           >
             {/* 타이틀 헤더 바 */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 select-none bg-zinc-50/50 dark:bg-zinc-900/50">
-              <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">계측 테이블 기록 ({record.mainMode === '포장' ? '포장' : record.subMode})</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">계측 테이블 기록 ({record.mainMode === '포장' ? '포장' : record.subMode})</h2>
+                <button
+                  onClick={() => {
+                    const newMeasurements = record.measurements.map(m => ({
+                      ...m,
+                      vials: [record.standardWeight ?? 0, record.standardWeight ?? 0, record.standardWeight ?? 0],
+                      capStatus: ['정상', '정상', '정상'],
+                      stickerStatus: ['정상', '정상', '정상'],
+                      printingStatus: ['정상', '정상', '정상'],
+                      scratchStatus: ['정상', '정상', '정상'],
+                      foreignStatus: ['정상', '정상', '정상']
+                    }));
+                    setRecord({ ...record, measurements: newMeasurements });
+                  }}
+                  className="px-2 py-1 bg-zinc-800 text-white dark:bg-zinc-700 rounded text-[10px] font-bold hover:bg-zinc-700 transition-colors"
+                >
+                  일괄정상
+                </button>
+              </div>
               <button 
                 onClick={() => setIsTableCardCollapsed(!isTableCardCollapsed)}
                 className="p-1 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
@@ -3065,7 +3088,19 @@ function AppContent() {
       >
         {/* 타이틀 헤더 바 */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 select-none bg-zinc-50/50 dark:bg-zinc-900/50">
-          <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 트렌드 그래프</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">중량 트렌드 그래프</h2>
+            <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-0.5 rounded-lg ml-2">
+              <button 
+                onClick={() => setGraphDataMode('daily')}
+                className={cn("px-2 py-1 rounded text-[10px] font-bold transition-all", graphDataMode === 'daily' ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-white" : "text-zinc-500 hover:text-zinc-700")}
+              >일일항목만</button>
+              <button 
+                onClick={() => setGraphDataMode('overall')}
+                className={cn("px-2 py-1 rounded text-[10px] font-bold transition-all", graphDataMode === 'overall' ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-white" : "text-zinc-500 hover:text-zinc-700")}
+              >전체 평균</button>
+            </div>
+          </div>
           <button 
             onClick={() => setIsGraphCardCollapsed(!isGraphCardCollapsed)}
             className="p-1 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer flex items-center justify-center"
@@ -3078,7 +3113,28 @@ function AppContent() {
         {!isGraphCardCollapsed && (
           <div className="flex-1 min-h-0">
             <WeightChart 
-              measurements={record.measurements} 
+              measurements={(() => {
+                if (graphDataMode === 'daily') return record.measurements;
+                
+                const lotRecords = history.filter(h => h.lotNumber === record.lotNumber && h.mainMode === '충진' && h.subMode === '충진1');
+                const measurementsByDate: Record<string, number[]> = {};
+                lotRecords.forEach(r => {
+                  const date = r.fillingDate || '알 수 없음';
+                  if (!measurementsByDate[date]) measurementsByDate[date] = [];
+                  r.measurements.forEach(m => {
+                    m.vials.forEach(v => {
+                      if (v !== null) measurementsByDate[date].push(v);
+                    });
+                  });
+                });
+
+                return Object.keys(measurementsByDate).sort().map((date, idx) => ({
+                  id: `overall-${idx}`,
+                  time: date,
+                  vials: measurementsByDate[date],
+                  capStatus: [], stickerStatus: [], printingStatus: [], scratchStatus: [], foreignStatus: []
+                }));
+              })()} 
               standardWeight={record.standardWeight} 
               underweightTolerance={record.underweightTolerance} 
               overweightTolerance={record.overweightTolerance} 
