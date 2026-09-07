@@ -3091,7 +3091,7 @@ function AppContent() {
               <button 
                 onClick={() => setGraphDataMode('daily')}
                 className={cn("px-2 py-1 rounded text-[10px] font-bold transition-all", graphDataMode === 'daily' ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-white" : "text-zinc-500 hover:text-zinc-700")}
-              >일일항목만</button>
+              >일일항목</button>
               <button 
                 onClick={() => setGraphDataMode('overall')}
                 className={cn("px-2 py-1 rounded text-[10px] font-bold transition-all", graphDataMode === 'overall' ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-white" : "text-zinc-500 hover:text-zinc-700")}
@@ -3113,24 +3113,25 @@ function AppContent() {
               measurements={(() => {
                 if (graphDataMode === 'daily') return record.measurements;
                 
-                const lotRecords = history.filter(h => h.lotNumber === record.lotNumber && h.mainMode === '충진' && h.subMode === '충진1');
-                const measurementsByDate: Record<string, number[]> = {};
+                const lotRecords = history
+                  .filter(h => h.lotNumber === record.lotNumber && h.mainMode === '충진' && h.subMode === '충진1')
+                  .sort((a, b) => (a.fillingDate || '').localeCompare(b.fillingDate || ''));
+
+                const allTimeMeasurements: Measurement[] = [];
                 lotRecords.forEach(r => {
-                  const date = r.fillingDate || '알 수 없음';
-                  if (!measurementsByDate[date]) measurementsByDate[date] = [];
-                  r.measurements.forEach(m => {
-                    m.vials.forEach(v => {
-                      if (v !== null) measurementsByDate[date].push(v);
-                    });
+                  const dateStr = r.fillingDate ? (r.fillingDate.length > 5 ? r.fillingDate.slice(5) : r.fillingDate) : '날짜미상';
+                  r.measurements.forEach((m, mIdx) => {
+                    if (m.vials.some(v => v !== null)) {
+                      allTimeMeasurements.push({
+                        ...m,
+                        id: `overall-${r.id || r.fillingDate}-${m.id || mIdx}`,
+                        time: `${dateStr} ${m.time}`,
+                      });
+                    }
                   });
                 });
 
-                return Object.keys(measurementsByDate).sort().map((date, idx) => ({
-                  id: `overall-${idx}`,
-                  time: date,
-                  vials: measurementsByDate[date],
-                  capStatus: [], stickerStatus: [], printingStatus: [], scratchStatus: [], foreignStatus: []
-                }));
+                return allTimeMeasurements;
               })()} 
               standardWeight={record.standardWeight} 
               underweightTolerance={record.underweightTolerance} 
