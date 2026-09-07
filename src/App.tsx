@@ -2313,20 +2313,18 @@ function AppContent() {
           <div className="flex items-center justify-between pb-4 border-b border-[var(--jt-color-border)] dark:border-zinc-800 w-full select-none">
             {!isSidebarCollapsed && (
               <img 
-                src="/brand/logo/logo-h.svg?v=2" 
+                src={isDarkMode ? "/brand/logo/logo-h-light.svg" : "/brand/logo/logo-h.svg"} 
                 alt="Zenitry Logo" 
                 className="h-[26px] w-auto object-contain cursor-pointer" 
-                style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0)' }}
                 onClick={handleGoDashboard}
                 title="대시보드로 이동"
               />
             )}
             {isSidebarCollapsed && (
               <img 
-                src="/brand/logo/logo-mark.svg?v=2" 
+                src={isDarkMode ? "/brand/logo/logo-mark-light.svg" : "/brand/logo/logo-mark.svg"} 
                 alt="Zenitry Logo" 
                 className="h-[26px] w-auto object-contain cursor-pointer mx-auto" 
-                style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0)' }}
                 onClick={handleGoDashboard}
                 title="대시보드로 이동"
               />
@@ -2514,10 +2512,9 @@ function AppContent() {
         {/* ── 체이스 요청: 모바일 전용 상단 헤더 바 ── */}
         <div className="md:hidden flex items-center justify-between p-4 border-b border-[var(--jt-color-border)] dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-30 -mx-6 -mt-6 mb-6 select-none shrink-0">
           <img 
-            src="/brand/logo/logo-mark.svg?v=2" 
+            src={isDarkMode ? "/brand/logo/logo-mark-light.svg" : "/brand/logo/logo-mark.svg"} 
             alt="Zenitry Logo" 
             className="h-10 w-10 object-contain cursor-pointer shrink-0" 
-            style={{ filter: isDarkMode ? 'brightness(0) invert(1)' : 'brightness(0)' }}
             onClick={handleGoDashboard}
           />
           
