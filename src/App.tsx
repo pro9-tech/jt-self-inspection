@@ -360,35 +360,44 @@ const WeightChart = ({
     const total = validWeights.length;
     const sortedKeys = Array.from(countMap.keys()).sort((a, b) => a - b);
 
-    // 정상이면 초록색 계열 다양한 색, 불량이면 적색 계열 다양한 색상 팔레트
+    // 체이스 요청: 정상은 초록색 계열, 중량미달은 적색 계열, 중량초과는 청색 계열 다양한 색상 팔레트
     const normalPalette = [
       '#10B981', '#059669', '#34D399', '#0D9488', 
       '#16A34A', '#22C55E', '#14B8A6', '#4ADE80', 
       '#15803D', '#2DD4BF', '#84CC16', '#65A30D'
     ];
-    const abnormalPalette = [
+    const underweightPalette = [
       '#EF4444', '#DC2626', '#F87171', '#F43F5E', 
       '#E11D48', '#EA580C', '#B91C1C', '#FB7185', 
       '#BE123C', '#991B1B', '#F97316', '#C2410C'
     ];
+    const overweightPalette = [
+      '#3B82F6', '#2563EB', '#60A5FA', '#0284C7', 
+      '#38BDF8', '#1D4ED8', '#0EA5E9', '#6366F1', 
+      '#0369A1', '#4F46E5', '#7DD3FC', '#1E40AF'
+    ];
 
     let normalIdx = 0;
-    let abnormalIdx = 0;
+    let underIdx = 0;
+    let overIdx = 0;
 
     return sortedKeys.map(key => {
       const count = countMap.get(key) || 0;
       const percent = count / total;
-      const isNormal = hasTolerance 
-        ? (key >= Number((stdVal - minTol - 0.001).toFixed(3)) && key <= Number((stdVal + maxTol + 0.001).toFixed(3)))
-        : true;
+      const isUnder = hasTolerance && (key < Number((stdVal - minTol - 0.001).toFixed(3)));
+      const isOver = hasTolerance && (key > Number((stdVal + maxTol + 0.001).toFixed(3)));
+      const isNormal = !isUnder && !isOver;
       
       let color = '';
       if (isNormal) {
         color = normalPalette[normalIdx % normalPalette.length];
         normalIdx++;
+      } else if (isOver) {
+        color = overweightPalette[overIdx % overweightPalette.length];
+        overIdx++;
       } else {
-        color = abnormalPalette[abnormalIdx % abnormalPalette.length];
-        abnormalIdx++;
+        color = underweightPalette[underIdx % underweightPalette.length];
+        underIdx++;
       }
 
       return {
@@ -397,6 +406,8 @@ const WeightChart = ({
         count,
         percent,
         isNormal,
+        isUnder,
+        isOver,
         color,
       };
     });
