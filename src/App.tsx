@@ -269,7 +269,7 @@ const WeightChart = ({
   underweightTolerance: number | null; 
   overweightTolerance: number | null; 
   }) => {
-  const [chartType, setChartType] = useState<'line' | 'bar' | 'pie' | '3d'>('line');
+  const [chartType, setChartType] = useState<'line' | 'bar' | 'pie' | 'band'>('line');
   const [chartMode, setChartMode] = useState<'average' | 'individual' | 'minMax'>('average');
   const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; value: number; label: string } | null>(null);
 
@@ -310,6 +310,67 @@ const WeightChart = ({
     return [x, y];
   };
 
+  // 0.1g 단위 분포 집계 데이터 계산 (원 및 띠 그래프용)
+  const distributionData = useMemo(() => {
+    if (validWeights.length === 0) return [];
+    
+    const stdVal = standardWeight ?? 0;
+    const minTol = underweightTolerance ?? 0;
+    const maxTol = overweightTolerance ?? 0;
+    const hasTolerance = standardWeight !== null && standardWeight !== undefined;
+
+    // 0.1g 단위로 그룹화 (부동소수점 오차 방지)
+    const countMap = new Map<number, number>();
+    validWeights.forEach(w => {
+      const key = Number(w.toFixed(1));
+      countMap.set(key, (countMap.get(key) || 0) + 1);
+    });
+
+    const total = validWeights.length;
+    const sortedKeys = Array.from(countMap.keys()).sort((a, b) => a - b);
+
+    // 정상이면 초록색 계열 다양한 색, 불량이면 적색 계열 다양한 색상 팔레트
+    const normalPalette = [
+      '#10B981', '#059669', '#34D399', '#0D9488', 
+      '#16A34A', '#22C55E', '#14B8A6', '#4ADE80', 
+      '#15803D', '#2DD4BF', '#84CC16', '#65A30D'
+    ];
+    const abnormalPalette = [
+      '#EF4444', '#DC2626', '#F87171', '#F43F5E', 
+      '#E11D48', '#EA580C', '#B91C1C', '#FB7185', 
+      '#BE123C', '#991B1B', '#F97316', '#C2410C'
+    ];
+
+    let normalIdx = 0;
+    let abnormalIdx = 0;
+
+    return sortedKeys.map(key => {
+      const count = countMap.get(key) || 0;
+      const percent = count / total;
+      const isNormal = hasTolerance 
+        ? (key >= Number((stdVal - minTol - 0.001).toFixed(3)) && key <= Number((stdVal + maxTol + 0.001).toFixed(3)))
+        : true;
+      
+      let color = '';
+      if (isNormal) {
+        color = normalPalette[normalIdx % normalPalette.length];
+        normalIdx++;
+      } else {
+        color = abnormalPalette[abnormalIdx % abnormalPalette.length];
+        abnormalIdx++;
+      }
+
+      return {
+        weight: key,
+        weightLabel: `${key.toFixed(1)}g`,
+        count,
+        percent,
+        isNormal,
+        color,
+      };
+    });
+  }, [validWeights, standardWeight, underweightTolerance, overweightTolerance]);
+
   return (
     <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col h-full select-none">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -318,11 +379,11 @@ const WeightChart = ({
           <p className="text-lg font-bold text-zinc-800 dark:text-zinc-100 mt-1">종합 평균: <span className="text-blue-600 dark:text-blue-400 font-extrabold">{average} g</span></p>
         </div>
         
-        {/* 체이스 요청: 다양한 차트 종류 및 꺾은선 옵션 모드 결합 전환부 */}
+        {/* 체이스 요청: 다양한 차트 종류 (꺾은선 / 막대 / 원 / 띠) */}
         <div className="flex flex-wrap gap-2">
-          {/* 차트 종류 (꺾은선 / 막대 / 원 / 3D) */}
+          {/* 차트 종류 (꺾은선 / 막대 / 원 / 띠) */}
           <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
-            {(['line', 'bar', 'pie', '3d'] as const).map((type) => (
+            {(['line', 'bar', 'pie', 'band'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => {
@@ -336,11 +397,10 @@ const WeightChart = ({
                     : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-650"
                 )}
               >
-                {type === 'line' ? '꺾은선' : type === 'bar' ? '막대' : type === 'pie' ? '원' : '입체막대(3D)'}
+                {type === 'line' ? '꺾은선' : type === 'bar' ? '막대' : type === 'pie' ? '원' : '띠'}
               </button>
             ))}
           </div>
-
 
         </div>
       </div>
@@ -364,8 +424,8 @@ const WeightChart = ({
               </linearGradient>
             </defs>
 
-            {/* 오차 한계 기준선 렌더링 (원형 파이 차트가 아닐 때만 가이드용 노출) */}
-            {standardWeight && chartType !== 'pie' && (
+            {/* 오차 한계 기준선 렌더링 (원형 및 띠 차트가 아닐 때만 가이드용 노출) */}
+            {standardWeight && chartType !== 'pie' && chartType !== 'band' && (
               <>
                 <line x1={padding} y1={getY(std + maxTolerance)} x2={width - padding} y2={getY(std + maxTolerance)} stroke="var(--jt-color-error)" strokeWidth="1" strokeDasharray="4 4" />
                 <text x={width - padding + 5} y={getY(std + maxTolerance) + 3} fontSize="8" fill="var(--jt-color-error)">+{maxTolerance}g</text>
@@ -376,8 +436,8 @@ const WeightChart = ({
               </>
             )}
 
-            {/* X축 시간 라벨 (원형 파이 차트가 아닐 때만 노출) */}
-            {chartType !== 'pie' && measurements.map((m, idx) => (
+            {/* X축 시간 라벨 (원형 및 띠 차트가 아닐 때만 노출) */}
+            {chartType !== 'pie' && chartType !== 'band' && measurements.map((m, idx) => (
               <text key={m.id} x={getX(idx)} y={height - 8} fontSize="10" fill="#9DA5AF" textAnchor="middle">{m.time}</text>
             ))}
 
@@ -457,26 +517,7 @@ const WeightChart = ({
                   );
                 }
               } else if (chartType === 'bar') {
-                const barWidth = Math.min(30, (chartWidth / measurements.length) * 0.5);
-                return (
-                  <>
-                    {measurements.map((m, idx) => {
-                      const vals = m.vials.filter((v): v is number => v !== null);
-                      if (vals.length === 0) return null;
-                      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                      const x = getX(idx);
-                      const y = getY(avg);
-                      const barHeight = height - padding - y;
-                      return (
-                        <g key={idx}>
-                          <rect x={x - barWidth / 2} y={y} width={barWidth} height={barHeight} fill="url(#barGrad)" rx="4" className="pointer-events-none" />
-                          <circle cx={x} cy={y} r="15" fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x, y, value: avg, label: `${m.time} 평균` })} onMouseLeave={() => setHoveredPoint(null)} />
-                        </g>
-                      );
-                    })}
-                  </>
-                );
-              } else if (chartType === '3d') {
+                // 체이스 요청: '막대' 형식을 입체막대(3D) 형태로 표현
                 const barWidth = Math.min(22, (chartWidth / measurements.length) * 0.45);
                 const dx = 5;
                 const dy = 5;
@@ -490,7 +531,7 @@ const WeightChart = ({
                       const y = getY(avg);
                       const yBaseline = height - padding;
                       const left = x - barWidth / 2;
-                      const rectHeight = yBaseline - y;
+                      const rectHeight = Math.max(0, yBaseline - y);
                       const topPoints = [`${left},${y}`, `${left + dx},${y - dy}`, `${left + barWidth + dx},${y - dy}`, `${left + barWidth},${y}`].join(' ');
                       const rightPoints = [`${left + barWidth},${y}`, `${left + barWidth + dx},${y - dy}`, `${left + barWidth + dx},${yBaseline - dy}`, `${left + barWidth},${yBaseline}`].join(' ');
                       return (
@@ -498,62 +539,269 @@ const WeightChart = ({
                           <polygon points={topPoints} fill="#93C5FD" className="pointer-events-none" />
                           <polygon points={rightPoints} fill="#1D4ED8" className="pointer-events-none" />
                           <rect x={left} y={y} width={barWidth} height={rectHeight} fill="url(#bar3dGrad)" className="pointer-events-none" />
-                          <circle cx={x + dx / 2} cy={y - dy / 2} r="15" fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x: x + dx / 2, y: y - dy / 2, value: avg, label: `${m.time} 평균(3D)` })} onMouseLeave={() => setHoveredPoint(null)} />
+                          <circle cx={x + dx / 2} cy={y - dy / 2} r="15" fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x: x + dx / 2, y: y - dy / 2, value: avg, label: `${m.time} 평균` })} onMouseLeave={() => setHoveredPoint(null)} />
                         </g>
                       );
                     })}
                   </>
                 );
               } else if (chartType === 'pie') {
-                if (!standardWeight) return null;
-                const stdVal = standardWeight;
-                const minTol = underweightTolerance || 0;
-                const maxTol = overweightTolerance || 0;
-                let fit = 0, under = 0, over = 0;
-                validWeights.forEach((w) => {
-                  if (w < stdVal - minTol) under++;
-                  else if (w > stdVal + maxTol) over++;
-                  else fit++;
-                });
-                const total = fit + under + over || 1;
-                const slices = [
-                  { value: fit, percent: fit / total, color: '#10B981', label: '적합 범위' },
-                  { value: under, percent: under / total, color: '#EF4444', label: '하한 미달' },
-                  { value: over, percent: over / total, color: '#F59E0B', label: '상한 초과' }
-                ];
+                // 체이스 요청: '원' 그래프 0.1g 단위 분포 (정상: 초록 계열 다양한 색, 불량: 적색 계열 다양한 색, 이미지 2 형식 글씨)
+                if (distributionData.length === 0) return null;
                 const cx = width / 2;
                 const cy = height / 2;
-                const r = height / 2.6;
+                const r = 70;
                 let accumulatedPercent = 0;
+                let narrowIndex = 0;
+
                 return (
                   <g>
-                    {slices.map((slice, sIdx) => {
-                      if (slice.percent === 0) return null;
-                      if (slice.percent >= 0.999) {
+                    {distributionData.map((item, sIdx) => {
+                      if (item.percent === 0) return null;
+
+                      // 100% 단일 항목일 경우
+                      if (item.percent >= 0.999) {
                         return (
                           <g key={sIdx}>
-                            <circle cx={cx} cy={cy} r={r} fill={slice.color} className="pointer-events-none" />
-                            <circle cx={cx} cy={cy} r={r} fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x: cx, y: cy, value: slice.percent * 100, label: `${slice.label} (${slice.value}개)` })} onMouseLeave={() => setHoveredPoint(null)} />
+                            <circle cx={cx} cy={cy} r={r} fill={item.color} stroke="#ffffff" strokeWidth="2" className="pointer-events-none" />
+                            <text x={cx} y={cy - 4} fontSize="11" fontWeight="bold" fill="#ffffff" textAnchor="middle" className="pointer-events-none drop-shadow-sm">
+                              {item.weightLabel}
+                            </text>
+                            <text x={cx} y={cy + 12} fontSize="10" fill="#ffffff" textAnchor="middle" className="pointer-events-none drop-shadow-sm">
+                              (100 %)
+                            </text>
+                            <circle cx={cx} cy={cy} r={r} fill="#000000" fillOpacity="0" className="cursor-pointer" 
+                              onMouseEnter={() => setHoveredPoint({ x: cx, y: cy, value: 100, label: `${item.weightLabel} (${item.count}개)` })} 
+                              onMouseLeave={() => setHoveredPoint(null)} 
+                            />
                           </g>
                         );
                       }
+
                       const startPercent = accumulatedPercent;
-                      accumulatedPercent += slice.percent;
-                      const start = getCoordinatesForPercent(startPercent);
-                      const end = getCoordinatesForPercent(accumulatedPercent);
-                      const x1 = cx + start[0] * r;
-                      const y1 = cy + start[1] * r;
-                      const x2 = cx + end[0] * r;
-                      const y2 = cy + end[1] * r;
-                      const pathData = [`M ${cx} ${cy}`, `L ${x1} ${y1}`, `A ${r} ${r} 0 ${slice.percent > 0.5 ? 1 : 0} 1 ${x2} ${y2}`, 'Z'].join(' ');
-                      const middle = getCoordinatesForPercent(startPercent + slice.percent / 2);
+                      accumulatedPercent += item.percent;
+                      const endPercent = accumulatedPercent;
+                      const midPercent = startPercent + item.percent / 2;
+
+                      const startCoord = getCoordinatesForPercent(startPercent);
+                      const endCoord = getCoordinatesForPercent(endPercent);
+                      const x1 = cx + startCoord[0] * r;
+                      const y1 = cy + startCoord[1] * r;
+                      const x2 = cx + endCoord[0] * r;
+                      const y2 = cy + endCoord[1] * r;
+
+                      const pathData = [
+                        `M ${cx} ${cy}`,
+                        `L ${x1} ${y1}`,
+                        `A ${r} ${r} 0 ${item.percent > 0.5 ? 1 : 0} 1 ${x2} ${y2}`,
+                        'Z'
+                      ].join(' ');
+
+                      const midCoord = getCoordinatesForPercent(midPercent);
+                      const isLarge = item.percent >= 0.10; // 10% 이상이면 부채꼴 내부 표시 (이미지 2 형식)
+                      const pctStr = `${Math.round(item.percent * 100)} %`;
+
+                      let labelEl = null;
+                      if (isLarge) {
+                        // 이미지 2의 내부 글씨 (미러리스, 일반 컴팩트, DSLR 등)
+                        const textR = r * 0.65;
+                        const tx = cx + midCoord[0] * textR;
+                        const ty = cy + midCoord[1] * textR;
+                        labelEl = (
+                          <g className="pointer-events-none select-none">
+                            <text x={tx} y={ty - 3} fontSize="11" fontWeight="bold" fill="#ffffff" textAnchor="middle" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                              {item.weightLabel}
+                            </text>
+                            <text x={tx} y={ty + 11} fontSize="10" fontWeight="600" fill="#ffffff" textAnchor="middle" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                              ({pctStr})
+                            </text>
+                          </g>
+                        );
+                      } else {
+                        // 이미지 2의 외부 지시선 글씨 (기타 3% 등)
+                        const currentNarrow = narrowIndex++;
+                        const edgeX = cx + midCoord[0] * r;
+                        const edgeY = cy + midCoord[1] * r;
+                        const outR = r + 15 + (currentNarrow % 2) * 8;
+                        const outX = cx + midCoord[0] * outR;
+                        const outY = cy + midCoord[1] * outR;
+                        const isRight = midCoord[0] >= 0;
+                        const endX = outX + (isRight ? 18 : -18);
+                        const endY = outY;
+
+                        labelEl = (
+                          <g className="pointer-events-none select-none">
+                            <polyline
+                              points={`${edgeX},${edgeY} ${outX},${outY} ${endX},${endY}`}
+                              fill="none"
+                              stroke="#6B7280"
+                              strokeWidth="1"
+                            />
+                            <text
+                              x={endX + (isRight ? 4 : -4)}
+                              y={endY - 3}
+                              fontSize="10"
+                              fontWeight="bold"
+                              className="fill-zinc-800 dark:fill-zinc-200"
+                              textAnchor={isRight ? 'start' : 'end'}
+                            >
+                              {item.weightLabel}
+                            </text>
+                            <text
+                              x={endX + (isRight ? 4 : -4)}
+                              y={endY + 11}
+                              fontSize="9.5"
+                              className="fill-zinc-600 dark:fill-zinc-400"
+                              textAnchor={isRight ? 'start' : 'end'}
+                            >
+                              ({pctStr})
+                            </text>
+                          </g>
+                        );
+                      }
+
+                      const hoverX = cx + midCoord[0] * (r * 0.7);
+                      const hoverY = cy + midCoord[1] * (r * 0.7);
+
                       return (
                         <g key={sIdx}>
-                          <path d={pathData} fill={slice.color} stroke="#ffffff" strokeWidth="1.5" className="pointer-events-none" />
-                          <path d={pathData} fill="#000000" fillOpacity="0" className="cursor-pointer" onMouseEnter={() => setHoveredPoint({ x: cx + middle[0] * (r * 0.75), y: cy + middle[1] * (r * 0.75), value: slice.percent * 100, label: `${slice.label} (${slice.value}개)` })} onMouseLeave={() => setHoveredPoint(null)} />
+                          <path d={pathData} fill={item.color} stroke="#ffffff" strokeWidth="1.5" className="pointer-events-none" />
+                          {labelEl}
+                          <path
+                            d={pathData}
+                            fill="#000000"
+                            fillOpacity="0"
+                            className="cursor-pointer"
+                            onMouseEnter={() => setHoveredPoint({ x: hoverX, y: hoverY, value: item.percent * 100, label: `${item.weightLabel} (${item.count}개)` })}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                          />
                         </g>
                       );
                     })}
+                  </g>
+                );
+              } else if (chartType === 'band') {
+                // 체이스 요청: '띠' 그래프 0.1g 단위 분포 (정상: 초록 계열 다양한 색, 불량: 적색 계열 다양한 색, 상단 눈금자 및 이미지 3 형식 글씨)
+                if (distributionData.length === 0) return null;
+                const stripX = padding + 20;
+                const stripW = width - (padding + 20) * 2;
+                const stripY = 56;
+                const stripH = 50;
+                const rulerY = 28;
+
+                // 10% 단위 눈금자 틱 배열 (0, 10, 20, ..., 100)
+                const ticks = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+                let currentLeft = stripX;
+                let narrowIndex = 0;
+
+                return (
+                  <g>
+                    {/* 이미지 3 형식: 상단 0 ~ 100(%) 눈금자 */}
+                    <line x1={stripX} y1={rulerY + 14} x2={stripX + stripW} y2={rulerY + 14} stroke="#9CA3AF" strokeWidth="1.2" />
+                    {ticks.map((t) => {
+                      const tx = stripX + (t / 100) * stripW;
+                      return (
+                        <g key={t}>
+                          <line x1={tx} y1={rulerY + 14} x2={tx} y2={rulerY + 7} stroke="#9CA3AF" strokeWidth="1.2" />
+                          <text x={tx} y={rulerY} fontSize="9" fill="#6B7280" textAnchor="middle" fontWeight="500">
+                            {t === 100 ? '100 (%)' : t}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {/* 띠 그래프 각 세그먼트 렌더링 */}
+                    {distributionData.map((item, bIdx) => {
+                      if (item.percent === 0) return null;
+                      const segW = item.percent * stripW;
+                      const segX = currentLeft;
+                      currentLeft += segW;
+                      const segMidX = segX + segW / 2;
+                      const isLarge = segW >= 65; // 너비가 65px 이상이면 띠 내부 표시, 좁으면 하단 화살표/지시선 (이미지 3 형식)
+                      const pctStr = `${Math.round(item.percent * 100)} %`;
+
+                      let labelEl = null;
+                      if (isLarge) {
+                        // 이미지 3 내부 글씨 (입산자 부주의, 논·밭두렁 소각 등)
+                        labelEl = (
+                          <g className="pointer-events-none select-none">
+                            <text x={segMidX} y={stripY + stripH / 2 - 3} fontSize="11" fontWeight="bold" fill="#ffffff" textAnchor="middle" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                              {item.weightLabel}
+                            </text>
+                            <text x={segMidX} y={stripY + stripH / 2 + 11} fontSize="10" fontWeight="600" fill="#ffffff" textAnchor="middle" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                              ({pctStr})
+                            </text>
+                          </g>
+                        );
+                      } else {
+                        // 이미지 3 하단 화살표/지시선 (성묘객 부주의, 기타 등)
+                        const currentNarrow = narrowIndex++;
+                        const staggerY = (currentNarrow % 2) * 28;
+                        const arrowTopY = stripY + stripH;
+                        const lineBottomY = stripY + stripH + 26 + staggerY;
+
+                        labelEl = (
+                          <g className="pointer-events-none select-none">
+                            {/* 아래에서 위(띠)를 가리키는 화살표 선 */}
+                            <line x1={segMidX} y1={lineBottomY} x2={segMidX} y2={arrowTopY + 3} stroke="#6B7280" strokeWidth="1" />
+                            {/* 화살표 머리 (▲) */}
+                            <polygon
+                              points={`${segMidX - 3},${arrowTopY + 7} ${segMidX + 3},${arrowTopY + 7} ${segMidX},${arrowTopY + 2}`}
+                              fill="#6B7280"
+                            />
+                            <text
+                              x={segMidX}
+                              y={lineBottomY + 12}
+                              fontSize="10"
+                              fontWeight="bold"
+                              className="fill-zinc-800 dark:fill-zinc-200"
+                              textAnchor="middle"
+                            >
+                              {item.weightLabel}
+                            </text>
+                            <text
+                              x={segMidX}
+                              y={lineBottomY + 24}
+                              fontSize="9.5"
+                              className="fill-zinc-600 dark:fill-zinc-400"
+                              textAnchor="middle"
+                            >
+                              ({pctStr})
+                            </text>
+                          </g>
+                        );
+                      }
+
+                      return (
+                        <g key={bIdx}>
+                          <rect
+                            x={segX}
+                            y={stripY}
+                            width={segW}
+                            height={stripH}
+                            fill={item.color}
+                            stroke="#374151"
+                            strokeWidth="1"
+                            className="pointer-events-none"
+                          />
+                          {labelEl}
+                          <rect
+                            x={segX}
+                            y={stripY}
+                            width={segW}
+                            height={stripH}
+                            fill="#000000"
+                            fillOpacity="0"
+                            className="cursor-pointer"
+                            onMouseEnter={() => setHoveredPoint({ x: segMidX, y: stripY + stripH / 2, value: item.percent * 100, label: `${item.weightLabel} (${item.count}개)` })}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                          />
+                        </g>
+                      );
+                    })}
+
+                    {/* 전체 띠 테두리 마감 */}
+                    <rect x={stripX} y={stripY} width={stripW} height={stripH} fill="none" stroke="#1F2937" strokeWidth="1.5" className="pointer-events-none" />
                   </g>
                 );
               }
@@ -591,7 +839,7 @@ const WeightChart = ({
                   fill="#ffffff" 
                   textAnchor="middle"
                 >
-                  {chartType === 'pie' ? `${hoveredPoint.value.toFixed(1)}%` : `${hoveredPoint.value.toFixed(2)} g`}
+                  {chartType === 'pie' || chartType === 'band' ? `${hoveredPoint.value.toFixed(1)}%` : `${hoveredPoint.value.toFixed(2)} g`}
                 </text>
                 {/* 툴팁 꼬리삼각형 */}
                 <polygon 
