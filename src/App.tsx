@@ -285,21 +285,52 @@ const WeightChart = ({
   const padding = 40;
 
   const chartWidth = width - padding * 2;
-  const chartHeight = height - padding * 2;
-
   const validMeasurements = measurements.filter(m => m.vials.some(v => v !== null));
 
-  // Y축 스케일 범위 계산
+  // Y축 스케일 범위 계산 (체이스 요청: 격차가 커서 벗어나더라도 항상 모든 요소가 다 보이도록 동적 스케일 적용)
   const std = standardWeight || 0;
   const minTolerance = underweightTolerance || 0;
   const maxTolerance = overweightTolerance || 0;
-  
-  const minVal = std - minTolerance * 1.5 || 0;
-  const maxVal = std + maxTolerance * 1.5 || 10;
+
+  const underLimit = std - minTolerance;
+  const overLimit = std + maxTolerance;
+
+  // 측정된 모든 수치(개별값 및 평균값) 수집
+  const allValues = validWeights.length > 0 ? validWeights : [std];
+  const dataMin = Math.min(...allValues);
+  const dataMax = Math.max(...allValues);
+
+  // 기준선(미달/기준/초과)과 실제 데이터를 모두 포함하도록 범위 자동 확장
+  const targetMin = Math.min(underLimit, dataMin);
+  const targetMax = Math.max(overLimit, dataMax);
+
+  // 상하단 여유 마진 (최소 0.15g 또는 전체 범위의 15%)
+  const margin = Math.max(0.15, (targetMax - targetMin) * 0.15);
+  const minVal = targetMin - margin;
+  const maxVal = targetMax + margin;
   const yRange = maxVal - minVal || 1;
 
+  // 캔버스 상하 여백 최적화 (상단 3D 돌출부 및 하단 시간 라벨 겹침 방지)
+  const paddingTop = 25;
+  const paddingBottom = 35;
+  const chartHeight = height - paddingTop - paddingBottom;
+
   const getX = (index: number) => padding + (index / (measurements.length - 1 || 1)) * chartWidth;
-  const getY = (val: number) => height - padding - ((val - minVal) / yRange) * chartHeight;
+  const getY = (val: number) => height - paddingBottom - ((val - minVal) / yRange) * chartHeight;
+
+  // 체이스 요청: 막대 그래프 맨 밑단 시작 규칙
+  // - 모든 수치가 불량 없이 설정 범위 안이면 중량미달 선(underLimit)에서 시작
+  // - 중량미달이 나오면 제일 낮은 수치의 중량미달에서 시작
+  const barAverages = measurements
+    .map(m => {
+      const vals = m.vials.filter((v): v is number => v !== null);
+      return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    })
+    .filter((v): v is number => v !== null);
+
+  const lowestBarVal = barAverages.length > 0 ? Math.min(...barAverages) : underLimit;
+  const barBaseWeight = lowestBarVal < underLimit ? lowestBarVal : underLimit;
+  const yBaseline = getY(barBaseWeight);
 
   // 파이 차트용 삼각함수 헬퍼 함수
   const getCoordinatesForPercent = (percent: number) => {
@@ -518,6 +549,7 @@ const WeightChart = ({
                 }
               } else if (chartType === 'bar') {
                 // 체이스 요청: '막대' 형식을 입체막대(3D) 형태로 표현
+                // 및 맨 밑단 규칙(설정 범위 안이면 중량미달선에서 시작, 중량미달이면 제일 낮은 수치에서 시작)
                 const barWidth = Math.min(22, (chartWidth / measurements.length) * 0.45);
                 const dx = 5;
                 const dy = 5;
@@ -529,7 +561,6 @@ const WeightChart = ({
                       const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
                       const x = getX(idx);
                       const y = getY(avg);
-                      const yBaseline = height - padding;
                       const left = x - barWidth / 2;
                       const rectHeight = Math.max(0, yBaseline - y);
                       const topPoints = [`${left},${y}`, `${left + dx},${y - dy}`, `${left + barWidth + dx},${y - dy}`, `${left + barWidth},${y}`].join(' ');
@@ -808,46 +839,63 @@ const WeightChart = ({
               return null;
             })()}
 
-            {/* SVG 내부에 일치화된 반응형 툴팁 오버레이 (pointer-events-none 적용으로 호버 간섭 완전 소멸) */}
-            {hoveredPoint && (
-              <g style={{ pointerEvents: 'none' }} className="pointer-events-none">
-                {/* 툴팁 말풍선 배경 */}
-                <rect 
-                  x={hoveredPoint.x - 65} 
-                  y={hoveredPoint.y - 45} 
-                  width="130" 
-                  height="34" 
-                  rx="8" 
-                  fill="#1F2328" 
-                  stroke="rgba(255,255,255,0.15)"
-                  strokeWidth="1"
-                />
-                <text 
-                  x={hoveredPoint.x} 
-                  y={hoveredPoint.y - 32} 
-                  fontSize="8" 
-                  fill="#9DA5AF" 
-                  textAnchor="middle"
-                >
-                  {hoveredPoint.label}
-                </text>
-                <text 
-                  x={hoveredPoint.x} 
-                  y={hoveredPoint.y - 18} 
-                  fontSize="11" 
-                  fontWeight="bold" 
-                  fill="#ffffff" 
-                  textAnchor="middle"
-                >
-                  {chartType === 'pie' || chartType === 'band' ? `${hoveredPoint.value.toFixed(1)}%` : `${hoveredPoint.value.toFixed(2)} g`}
-                </text>
-                {/* 툴팁 꼬리삼각형 */}
-                <polygon 
-                  points={`${hoveredPoint.x - 5},${hoveredPoint.y - 11} ${hoveredPoint.x + 5},${hoveredPoint.y - 11} ${hoveredPoint.x},${hoveredPoint.y - 6}`}
-                  fill="#1F2328"
-                />
-              </g>
-            )}
+            {/* SVG 내부에 일치화된 반응형 툴팁 오버레이 (체이스 요청: 화면 밖 벗어남 방지 및 자동 위치 보정) */}
+            {hoveredPoint && (() => {
+              const boxW = 130;
+              const boxH = 34;
+              // X축 화면 벗어남 방지 (좌우 10px 마진 클램핑)
+              const boxX = Math.max(10, Math.min(width - boxW - 10, hoveredPoint.x - boxW / 2));
+              
+              // Y축 화면 벗어남 방지: 상단에 너무 가까우면(y < 45) 커서 아래쪽으로 반전(flip)
+              const isFlipped = hoveredPoint.y - 45 < 5;
+              const boxY = isFlipped ? (hoveredPoint.y + 14) : (hoveredPoint.y - 45);
+
+              // 꼬리 삼각형 좌표 (포인터 x가 박스 밖으로 나가지 않게 클램핑)
+              const pointerX = Math.max(boxX + 12, Math.min(boxX + boxW - 12, hoveredPoint.x));
+              const arrowPoints = isFlipped
+                ? `${pointerX - 5},${boxY} ${pointerX + 5},${boxY} ${pointerX},${hoveredPoint.y + 6}`
+                : `${pointerX - 5},${boxY + boxH} ${pointerX + 5},${boxY + boxH} ${pointerX},${hoveredPoint.y - 6}`;
+
+              return (
+                <g style={{ pointerEvents: 'none' }} className="pointer-events-none">
+                  {/* 툴팁 말풍선 배경 */}
+                  <rect 
+                    x={boxX} 
+                    y={boxY} 
+                    width={boxW} 
+                    height={boxH} 
+                    rx="8" 
+                    fill="#1F2328" 
+                    stroke="rgba(255,255,255,0.15)"
+                    strokeWidth="1"
+                  />
+                  <text 
+                    x={boxX + boxW / 2} 
+                    y={boxY + 13} 
+                    fontSize="8" 
+                    fill="#9DA5AF" 
+                    textAnchor="middle"
+                  >
+                    {hoveredPoint.label}
+                  </text>
+                  <text 
+                    x={boxX + boxW / 2} 
+                    y={boxY + 27} 
+                    fontSize="11" 
+                    fontWeight="bold" 
+                    fill="#ffffff" 
+                    textAnchor="middle"
+                  >
+                    {chartType === 'pie' || chartType === 'band' ? `${hoveredPoint.value.toFixed(1)}%` : `${hoveredPoint.value.toFixed(2)} g`}
+                  </text>
+                  {/* 툴팁 꼬리삼각형 */}
+                  <polygon 
+                    points={arrowPoints}
+                    fill="#1F2328"
+                  />
+                </g>
+              );
+            })()}
           </svg>
         )}
       </div>
