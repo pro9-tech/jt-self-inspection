@@ -1937,6 +1937,7 @@ function AppContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [graphDataMode, setGraphDataMode] = useState<'daily' | 'overall'>('daily');
+  const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
 
   // --- 체이스 요청: 앱 내부 알림 모달 및 관리자 모드 상태 정의 ── //
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -2521,6 +2522,33 @@ function AppContent() {
       return;
     }
 
+    // 기본 정보 설정 필수 입력 검증
+    const errors: Record<string, boolean> = {};
+    if (!record.itemName || !record.itemName.trim()) errors.itemName = true;
+    if (!record.lotNumber || !record.lotNumber.trim()) errors.lotNumber = true;
+    if (!record.fillingDate || !record.fillingDate.trim()) errors.fillingDate = true;
+    if (!record.verifier || !record.verifier.trim()) errors.verifier = true;
+    if (!record.operator || !record.operator.trim()) errors.operator = true;
+
+    if (record.mainMode === '충진' && record.subMode === '충진1') {
+      if (record.standardWeight === null || record.standardWeight === undefined || isNaN(Number(record.standardWeight)) || String(record.standardWeight).trim() === '') {
+        errors.standardWeight = true;
+      }
+      if (record.underweightTolerance === null || record.underweightTolerance === undefined || isNaN(Number(record.underweightTolerance)) || String(record.underweightTolerance).trim() === '') {
+        errors.underweightTolerance = true;
+      }
+      if (record.overweightTolerance === null || record.overweightTolerance === undefined || isNaN(Number(record.overweightTolerance)) || String(record.overweightTolerance).trim() === '') {
+        errors.overweightTolerance = true;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      showAlert('기본 정보 설정의 모든 항목을 입력하셔야 저장할 수 있습니다.', 'error', '저장 불가');
+      return;
+    }
+
+    setValidationErrors({});
     setIsSaving(true);
     try {
       // Always generate a new ID to ensure a new record is created even if editing
@@ -2572,6 +2600,7 @@ function AppContent() {
   };
 
   const resetForm = () => {
+    setValidationErrors({});
     setRecord({
       id: Math.random().toString(36).substr(2, 9),
       mainMode: record.mainMode,
@@ -2954,6 +2983,9 @@ function AppContent() {
                   <select
                     value={record.itemName}
                     onChange={(e) => {
+                      if (validationErrors.itemName) {
+                        setValidationErrors(prev => ({ ...prev, itemName: false }));
+                      }
                       const selectedItem = settings.items.find(i => i.name === e.target.value);
                       if (selectedItem) {
                         setRecord({ 
@@ -2967,7 +2999,12 @@ function AppContent() {
                         setRecord({ ...record, itemName: e.target.value });
                       }
                     }}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                    className={cn(
+                      "w-full rounded-xl text-[14px] font-bold focus:ring-2 p-2 transition-colors",
+                      validationErrors.itemName 
+                        ? "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-900 dark:text-red-200 focus:ring-red-400" 
+                        : "bg-zinc-50 dark:bg-zinc-800 border-none focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100"
+                    )}
                   >
                     <option value="">품목 선택...</option>
                     {settings.items.map((item, idx) => (
@@ -2986,8 +3023,18 @@ function AppContent() {
                   <input
                     type="text"
                     value={record.lotNumber}
-                    onChange={(e) => setRecord({ ...record, lotNumber: e.target.value })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                    onChange={(e) => {
+                      if (validationErrors.lotNumber) {
+                        setValidationErrors(prev => ({ ...prev, lotNumber: false }));
+                      }
+                      setRecord({ ...record, lotNumber: e.target.value });
+                    }}
+                    className={cn(
+                      "w-full rounded-xl text-[14px] font-bold focus:ring-2 p-2 transition-colors",
+                      validationErrors.lotNumber 
+                        ? "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-900 dark:text-red-200 focus:ring-red-400" 
+                        : "bg-zinc-50 dark:bg-zinc-800 border-none focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100"
+                    )}
                     placeholder="예: LOT20240326"
                   />
                 </div>
@@ -2999,8 +3046,18 @@ function AppContent() {
                   <input
                     type="date"
                     value={record.fillingDate}
-                    onChange={(e) => setRecord({ ...record, fillingDate: e.target.value })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                    onChange={(e) => {
+                      if (validationErrors.fillingDate) {
+                        setValidationErrors(prev => ({ ...prev, fillingDate: false }));
+                      }
+                      setRecord({ ...record, fillingDate: e.target.value });
+                    }}
+                    className={cn(
+                      "w-full rounded-xl text-[14px] font-bold focus:ring-2 p-2 transition-colors",
+                      validationErrors.fillingDate 
+                        ? "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-900 dark:text-red-200 focus:ring-red-400" 
+                        : "bg-zinc-50 dark:bg-zinc-800 border-none focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100"
+                    )}
                   />
                 </div>
 
@@ -3012,10 +3069,20 @@ function AppContent() {
                       </label>
                       <NumberInputWithButtons
                         value={record.standardWeight}
-                        onChange={(val) => setRecord({ ...record, standardWeight: val })}
+                        onChange={(val) => {
+                          if (validationErrors.standardWeight) {
+                            setValidationErrors(prev => ({ ...prev, standardWeight: false }));
+                          }
+                          setRecord({ ...record, standardWeight: val });
+                        }}
                         step={0.1}
                         placeholder="0.0"
-                        className="bg-zinc-50 border-transparent text-[14px] font-bold"
+                        className={cn(
+                          "transition-colors",
+                          validationErrors.standardWeight 
+                            ? "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-900 dark:text-red-200" 
+                            : "bg-zinc-50 border-transparent text-[14px] font-bold"
+                        )}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -3025,10 +3092,20 @@ function AppContent() {
                         </label>
                         <NumberInputWithButtons
                           value={record.underweightTolerance}
-                          onChange={(val) => setRecord({ ...record, underweightTolerance: val })}
+                          onChange={(val) => {
+                            if (validationErrors.underweightTolerance) {
+                              setValidationErrors(prev => ({ ...prev, underweightTolerance: false }));
+                            }
+                            setRecord({ ...record, underweightTolerance: val });
+                          }}
                           step={0.1}
                           placeholder="0.0"
-                          className="bg-zinc-50 border-transparent text-[14px] font-bold"
+                          className={cn(
+                            "transition-colors",
+                            validationErrors.underweightTolerance 
+                              ? "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-900 dark:text-red-200" 
+                              : "bg-zinc-50 border-transparent text-[14px] font-bold"
+                          )}
                         />
                       </div>
                       <div className="space-y-1">
@@ -3037,10 +3114,20 @@ function AppContent() {
                         </label>
                         <NumberInputWithButtons
                           value={record.overweightTolerance}
-                          onChange={(val) => setRecord({ ...record, overweightTolerance: val })}
+                          onChange={(val) => {
+                            if (validationErrors.overweightTolerance) {
+                              setValidationErrors(prev => ({ ...prev, overweightTolerance: false }));
+                            }
+                            setRecord({ ...record, overweightTolerance: val });
+                          }}
                           step={0.1}
                           placeholder="0.0"
-                          className="bg-zinc-50 border-transparent text-[14px] font-bold"
+                          className={cn(
+                            "transition-colors",
+                            validationErrors.overweightTolerance 
+                              ? "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-900 dark:text-red-200" 
+                              : "bg-zinc-50 border-transparent text-[14px] font-bold"
+                          )}
                         />
                       </div>
                     </div>
@@ -3054,8 +3141,18 @@ function AppContent() {
                     </label>
                     <select
                       value={record.verifier}
-                      onChange={(e) => setRecord({ ...record, verifier: e.target.value })}
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                      onChange={(e) => {
+                        if (validationErrors.verifier) {
+                          setValidationErrors(prev => ({ ...prev, verifier: false }));
+                        }
+                        setRecord({ ...record, verifier: e.target.value });
+                      }}
+                      className={cn(
+                        "w-full rounded-xl text-[14px] font-bold focus:ring-2 p-2 transition-colors",
+                        validationErrors.verifier 
+                          ? "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-900 dark:text-red-200 focus:ring-red-400" 
+                          : "bg-zinc-50 dark:bg-zinc-800 border-none focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100"
+                      )}
                     >
                       <option value="">선택...</option>
                       {(settings.verifiers || []).map((verItem, i) => {
@@ -3070,8 +3167,18 @@ function AppContent() {
                     </label>
                     <select
                       value={record.operator}
-                      onChange={(e) => setRecord({ ...record, operator: e.target.value })}
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[14px] font-bold focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100 p-2"
+                      onChange={(e) => {
+                        if (validationErrors.operator) {
+                          setValidationErrors(prev => ({ ...prev, operator: false }));
+                        }
+                        setRecord({ ...record, operator: e.target.value });
+                      }}
+                      className={cn(
+                        "w-full rounded-xl text-[14px] font-bold focus:ring-2 p-2 transition-colors",
+                        validationErrors.operator 
+                          ? "bg-red-50 dark:bg-red-950/40 border-2 border-red-500 text-red-900 dark:text-red-200 focus:ring-red-400" 
+                          : "bg-zinc-50 dark:bg-zinc-800 border-none focus:ring-zinc-200 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100"
+                      )}
                     >
                       <option value="">선택...</option>
                       {(settings.operators || []).map((opItem, i) => {
@@ -3143,6 +3250,41 @@ function AppContent() {
                 {isTableCardCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               </button>
             </div>
+
+            {/* 체이스 요청: 충진1 한정 일괄정상 바로 아래 수치 확인 한 줄 안내문 */}
+            {record.mainMode === '충진' && record.subMode === '충진1' && !isTableCardCollapsed && (
+              <div className="px-6 py-2.5 bg-zinc-100/80 dark:bg-zinc-800/80 border-b border-zinc-200 dark:border-zinc-800 text-[12px] font-bold flex items-center justify-between flex-wrap gap-2 select-none shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-zinc-500 dark:text-zinc-400 font-mono text-[11px]">📊 중량 수치 확인:</span>
+                  <span className="text-zinc-800 dark:text-zinc-200 font-extrabold">
+                    정식중량 {record.standardWeight !== null && record.standardWeight !== undefined ? `${record.standardWeight}g` : '-g'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-red-500 dark:text-red-400 font-black flex items-center gap-1">
+                    <span>중량미달:</span>
+                    <span>
+                      {record.standardWeight !== null && record.underweightTolerance !== null
+                        ? `${(Math.round((record.standardWeight - record.underweightTolerance) * 100) / 100).toFixed(1)}g 이하 (±${record.underweightTolerance}g)`
+                        : record.underweightTolerance !== null
+                          ? `±${record.underweightTolerance}g`
+                          : '-g'}
+                    </span>
+                  </span>
+                  <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                  <span className="text-blue-500 dark:text-blue-400 font-black flex items-center gap-1">
+                    <span>중량초과:</span>
+                    <span>
+                      {record.standardWeight !== null && record.overweightTolerance !== null
+                        ? `${(Math.round((record.standardWeight + record.overweightTolerance) * 100) / 100).toFixed(1)}g 이상 (±${record.overweightTolerance}g)`
+                        : record.overweightTolerance !== null
+                          ? `±${record.overweightTolerance}g`
+                          : '-g'}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            )}
 
             {!isTableCardCollapsed && (
               <>
