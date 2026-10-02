@@ -1590,30 +1590,41 @@ const MeasurementRow = ({
     return failCount < 2 ? "적합" : "부적합";
   };
 
-  // 3개 선택/입력이 온전히 채워진 항목인지 확인하는 헬퍼 함수
-  const isCategoryComplete = (arr: (string | number | null | undefined)[] | undefined): boolean => {
-    if (!arr || arr.length < 3) return false;
-    return arr.slice(0, 3).every(v => v !== null && v !== undefined && String(v).trim() !== "");
+  // 항목(3개 슬롯)에서 유효하게 입력/선택된 개수를 반환 (0 ~ 3)
+  const getCategoryFilledCount = (arr: (string | number | null | undefined)[] | undefined): number => {
+    if (!arr) return 0;
+    return arr.slice(0, 3).filter(v => v !== null && v !== undefined && String(v).trim() !== "").length;
   };
 
   const handleSaveClick = () => {
-    // 1. 최소 한 항목의 3개 선택 완료 여부 검사
-    let hasCompletedCategory = false;
+    // 모드별 해당 행의 모든 항목 목록 추출
+    let categories: (string | number | null | undefined)[][] = [];
     if (mainMode === '충진' && subMode === '충진1') {
-      hasCompletedCategory = isCategoryComplete(measurement.vials) || isCategoryComplete(measurement.capStatus);
+      categories = [measurement.vials, measurement.capStatus];
     } else if (mainMode === '충진' && subMode === '충진2') {
-      hasCompletedCategory = isCategoryComplete(measurement.stickerStatus) || isCategoryComplete(measurement.printingStatus);
+      categories = [measurement.stickerStatus, measurement.printingStatus];
     } else if (mainMode === '포장') {
-      hasCompletedCategory = 
-        isCategoryComplete(measurement.printingStatus) ||
-        isCategoryComplete(measurement.capStatus) ||
-        isCategoryComplete(measurement.stickerStatus) ||
-        isCategoryComplete(measurement.scratchStatus) ||
-        isCategoryComplete(measurement.foreignStatus);
+      categories = [
+        measurement.printingStatus,
+        measurement.capStatus,
+        measurement.stickerStatus,
+        measurement.scratchStatus,
+        measurement.foreignStatus
+      ];
     }
 
-    // 최소 한 항목의 3개를 채우지 않고 저장 시 -> 저장 거부, 메모장은 펼치지 않고 해당 줄의 모든 선 빨간색 표시
-    if (!hasCompletedCategory) {
+    // 1. 최소 하나의 3개 전부 선택된 항목이 존재하는지 확인
+    const hasAtLeastOneFullCategory = categories.some(cat => getCategoryFilledCount(cat) === 3);
+
+    // 2. 1개 또는 2개만 선택된(불완전한) 항목이 하나라도 존재하는지 확인
+    const hasPartialCategory = categories.some(cat => {
+      const count = getCategoryFilledCount(cat);
+      return count > 0 && count < 3;
+    });
+
+    // 최소 하나의 3개 꽉 찬 항목이 없거나, 1~2개만 채워진 불완전 항목이 있는 경우 저장 거부
+    // (각 항목은 완전히 비어있거나(0개) 3개 꽉 찬 경우만 허용)
+    if (!hasAtLeastOneFullCategory || hasPartialCategory) {
       setShowError(true);
       return;
     }
