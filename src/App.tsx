@@ -235,6 +235,16 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
 // --- Constants ---
 
+// 체이스 요청: 1시간 단위 증가 계산 시 13:00(점심시간) 제외하고 12:00 -> 14:00으로 건너뜀
+const getNextHourTime = (currentTime: string): string => {
+  const [h, m] = currentTime.split(':').map(Number);
+  let nextH = (h + 1) % 24;
+  if (nextH === 13) {
+    nextH = 14;
+  }
+  return `${nextH.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+};
+
 const DEFAULT_MEASUREMENTS: Measurement[] = [{
   id: Math.random().toString(36).substr(2, 9),
   time: '09:00',
@@ -1727,7 +1737,7 @@ const MeasurementRow = ({
                    onChange={(e) => onTimeChange?.(e.target.value)}
                    className="font-mono text-[12px] font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded px-1 py-0.5 text-center outline-none cursor-pointer focus:ring-1 focus:ring-zinc-400 w-full"
                  >
-                   {['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map(t => (
+                   {['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'].map(t => (
                      <option key={t} value={t}>{t}</option>
                    ))}
                  </select>
@@ -2106,15 +2116,18 @@ function AppContent() {
   // 체이스 요청: 일괄정상 활성화 상태 토글
   const [isBatchNormal, setIsBatchNormal] = useState(false);
 
-  // 체이스 요청: 첫 번째 행 시간 변경 시 후속 행들 1시간 단위 자동 연동
+  // 체이스 요청: 첫 번째 행 시간 변경 시 후속 행들 1시간 단위 자동 연동 (13:00 점심시간 건너뜀)
   const handleFirstRowTimeChange = (newTime: string) => {
-    const [startH, startM] = newTime.split(':').map(Number);
-    const updatedMeasurements = record.measurements.map((m, idx) => {
-      if (idx === 0) return { ...m, time: newTime };
-      const nextH = (startH + idx) % 24;
-      const calcTime = `${nextH.toString().padStart(2, '0')}:${(startM || 0).toString().padStart(2, '0')}`;
-      return { ...m, time: calcTime };
-    });
+    const updatedMeasurements = [...record.measurements];
+    let curTime = newTime;
+    for (let i = 0; i < updatedMeasurements.length; i++) {
+      if (i === 0) {
+        updatedMeasurements[i] = { ...updatedMeasurements[i], time: newTime };
+      } else {
+        curTime = getNextHourTime(curTime);
+        updatedMeasurements[i] = { ...updatedMeasurements[i], time: curTime };
+      }
+    }
     setRecord(prev => ({ ...prev, measurements: updatedMeasurements }));
   };
 
@@ -3639,11 +3652,8 @@ function AppContent() {
                       }}
                       onSaveRow={() => {
                         if (idx === record.measurements.length - 1) {
-                          const currentLen = record.measurements.length;
-                          const firstTime = record.measurements[0]?.time || "09:00";
-                          const [startH, startM] = firstTime.split(':').map(Number);
-                          const nextH = (startH + currentLen) % 24;
-                          const nextTime = `${nextH.toString().padStart(2, '0')}:${(startM || 0).toString().padStart(2, '0')}`;
+                          const lastTime = record.measurements[idx]?.time || "09:00";
+                          const nextTime = getNextHourTime(lastTime);
                           const std = record.standardWeight ?? 0;
 
                           setRecord(prev => ({
