@@ -128,6 +128,7 @@ interface Measurement {
   foreignStatus: (string | null)[];
   foreignMemo?: string;
   isExpanded?: boolean;
+  isSaved?: boolean;
 }
 
 interface FillingRecord {
@@ -234,13 +235,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
 // --- Constants ---
 
-const TIMES = [
-  '09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'
-];
-
-const DEFAULT_MEASUREMENTS: Measurement[] = TIMES.map(time => ({
+const DEFAULT_MEASUREMENTS: Measurement[] = [{
   id: Math.random().toString(36).substr(2, 9),
-  time: time,
+  time: '',
   vials: [null, null, null],
   vialMemo: '',
   capStatus: [null, null, null],
@@ -254,7 +251,8 @@ const DEFAULT_MEASUREMENTS: Measurement[] = TIMES.map(time => ({
   foreignStatus: [null, null, null],
   foreignMemo: '',
   isExpanded: false,
-}));
+  isSaved: false,
+}];
 
 // --- Components ---
 
@@ -1550,6 +1548,7 @@ interface MeasurementRowProps {
   underweightTolerance: number;
   overweightTolerance: number;
   onUpdate: (updated: Measurement) => void;
+  onSaveRow?: () => void;
 }
 
 const MeasurementRow = ({ 
@@ -1559,8 +1558,66 @@ const MeasurementRow = ({
   standardWeight, 
   underweightTolerance,
   overweightTolerance,
-  onUpdate 
+  onUpdate,
+  onSaveRow
 }: MeasurementRowProps) => {
+  const [showError, setShowError] = useState(false);
+
+  const getStatusResultLocal = (arr: (string | null)[]): string => {
+    let count = 0;
+    let failCount = 0;
+    arr.forEach(v => {
+      if (v !== null && v !== undefined && v !== "") {
+        count++;
+        if (v === "불량") failCount++;
+      }
+    });
+    if (count === 0) return "-";
+    return failCount < 2 ? "적합" : "부적합";
+  };
+
+  const getWeightResultLocal = (vials: (number | null)[], std: number, under: number, over: number): string => {
+    let count = 0;
+    let failCount = 0;
+    vials.forEach(v => {
+      if (v !== null && v !== undefined && String(v) !== "") {
+        count++;
+        const val = Number(v);
+        if (val < (std - under) || val > (std + over)) failCount++;
+      }
+    });
+    if (count === 0) return "-";
+    return failCount < 2 ? "적합" : "부적합";
+  };
+
+  const handleSaveClick = () => {
+    let hasError = false;
+    if (mainMode === '충진' && subMode === '충진1') {
+       if (getWeightResultLocal(measurement.vials, standardWeight, underweightTolerance, overweightTolerance) === '부적합' && !measurement.vialMemo) hasError = true;
+       if (getStatusResultLocal(measurement.capStatus) === '부적합' && !measurement.capMemo) hasError = true;
+    }
+    else if (mainMode === '충진' && subMode === '충진2') {
+       if (getStatusResultLocal(measurement.stickerStatus) === '부적합' && !measurement.stickerMemo) hasError = true;
+       if (getStatusResultLocal(measurement.printingStatus) === '부적합' && !measurement.printingMemo) hasError = true;
+    }
+    else if (mainMode === '포장') {
+       if (getStatusResultLocal(measurement.printingStatus) === '부적합' && !measurement.printingMemo) hasError = true;
+       if (getStatusResultLocal(measurement.capStatus) === '부적합' && !measurement.capMemo) hasError = true;
+       if (getStatusResultLocal(measurement.stickerStatus) === '부적합' && !measurement.stickerMemo) hasError = true;
+       if (getStatusResultLocal(measurement.scratchStatus) === '부적합' && !measurement.scratchMemo) hasError = true;
+       if (getStatusResultLocal(measurement.foreignStatus) === '부적합' && !measurement.foreignMemo) hasError = true;
+    }
+
+    if (hasError) {
+      setShowError(true);
+      onUpdate({ ...measurement, isExpanded: true });
+    } else {
+      setShowError(false);
+      const nowStr = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+      onUpdate({ ...measurement, time: nowStr, isSaved: true, isExpanded: false });
+      if (onSaveRow) onSaveRow();
+    }
+  };
   const average = useMemo(() => {
     const validVials = measurement.vials.filter((v): v is number => v !== null);
     if (validVials.length === 0) return null;
@@ -1593,20 +1650,37 @@ const MeasurementRow = ({
 
   return (
     <>
-      <tr className="border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
+      <tr className={cn("border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group", showError && "border-2 border-red-500 shadow-[inset_0_0_0_2px_rgba(239,68,68,1)]")}>
         <td className="p-3 text-center w-20 min-w-[80px]">
-          <button 
-            onClick={toggleExpand}
-            className="flex flex-col items-center justify-center w-full group"
-          >
-            <span className="font-mono text-[14px] font-bold text-zinc-700 dark:text-zinc-300">{measurement.time}</span>
-            <div className={cn(
-              "mt-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-all",
-              measurement.isExpanded && "bg-zinc-800 dark:bg-zinc-700 text-white dark:text-zinc-100 group-hover:bg-zinc-700 dark:group-hover:bg-zinc-600"
-            )}>
-              {measurement.isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-            </div>
-          </button>
+          {measurement.isSaved ? (
+            <button 
+              onClick={toggleExpand}
+              className="flex flex-col items-center justify-center w-full group"
+            >
+              <span className="font-mono text-[14px] font-bold text-zinc-700 dark:text-zinc-300">{measurement.time}</span>
+              <div className={cn(
+                "mt-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-all",
+                measurement.isExpanded && "bg-zinc-800 dark:bg-zinc-700 text-white dark:text-zinc-100 group-hover:bg-zinc-700 dark:group-hover:bg-zinc-600"
+              )}>
+                {measurement.isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+              </div>
+            </button>
+          ) : (
+             <div className="flex flex-col items-center gap-2 w-full">
+               <button 
+                 onClick={handleSaveClick}
+                 className="w-full bg-zinc-800 dark:bg-zinc-700 hover:opacity-90 text-white font-bold py-1.5 px-2 rounded-lg text-[11px] transition-all shadow-sm"
+               >
+                 저장
+               </button>
+               <button 
+                 onClick={toggleExpand}
+                 className="p-1 rounded-md text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all"
+               >
+                 {measurement.isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+               </button>
+             </div>
+          )}
         </td>
         
         {mainMode === '충진' && subMode === '충진1' && (
@@ -3224,23 +3298,6 @@ function AppContent() {
             <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 select-none bg-zinc-50/50 dark:bg-zinc-900/50">
               <div className="flex items-center gap-3">
                 <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">계측 테이블 기록 ({record.mainMode === '포장' ? '포장' : record.subMode})</h2>
-                <button
-                  onClick={() => {
-                    const newMeasurements = record.measurements.map(m => ({
-                      ...m,
-                      vials: [record.standardWeight ?? 0, record.standardWeight ?? 0, record.standardWeight ?? 0],
-                      capStatus: ['정상', '정상', '정상'],
-                      stickerStatus: ['정상', '정상', '정상'],
-                      printingStatus: ['정상', '정상', '정상'],
-                      scratchStatus: ['정상', '정상', '정상'],
-                      foreignStatus: ['정상', '정상', '정상']
-                    }));
-                    setRecord({ ...record, measurements: newMeasurements });
-                  }}
-                  className="px-2 py-1 bg-zinc-800 text-white dark:bg-zinc-700 rounded text-[10px] font-bold hover:bg-zinc-700 transition-colors"
-                >
-                  일괄정상
-                </button>
               </div>
               <button 
                 onClick={() => setIsTableCardCollapsed(!isTableCardCollapsed)}
@@ -3376,142 +3433,41 @@ function AppContent() {
                         newMeasurements[idx] = updated;
                         setRecord({ ...record, measurements: newMeasurements });
                       }}
+                      onSaveRow={() => {
+                        if (idx === record.measurements.length - 1) {
+                          setRecord(prev => ({
+                            ...prev,
+                            measurements: [
+                              ...prev.measurements,
+                              { 
+                                id: Math.random().toString(36).substr(2, 9), 
+                                time: '', 
+                                vials: [null, null, null], 
+                                vialMemo: '',
+                                capStatus: [null, null, null],
+                                capMemo: '',
+                                stickerStatus: [null, null, null],
+                                stickerMemo: '',
+                                printingStatus: [null, null, null],
+                                printingMemo: '',
+                                scratchStatus: [null, null, null],
+                                scratchMemo: '',
+                                foreignStatus: [null, null, null],
+                                foreignMemo: '',
+                                isExpanded: false,
+                                isSaved: false
+                              }
+                            ]
+                          }));
+                        }
+                      }}
                     />
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* 시간대 조절판 */}
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex flex-wrap justify-center gap-6">
-              <div className="flex gap-4 items-center">
-                <button 
-                  onClick={() => {
-                    const firstTime = record.measurements[0]?.time || "09:00";
-                    const [h, m] = firstTime.split(':').map(Number);
-                    let prevH = (h - 1 + 24) % 24;
-                    if (prevH === 13) prevH = 12;
-                    const prevTime = `${prevH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                    setRecord({
-                      ...record,
-                      measurements: [
-                        { 
-                          id: Math.random().toString(36).substr(2, 9), 
-                          time: prevTime, 
-                          vials: [null, null, null], 
-                          vialMemo: '',
-                          capStatus: [null, null, null],
-                          capMemo: '',
-                          stickerStatus: [null, null, null],
-                          stickerMemo: '',
-                          printingStatus: [null, null, null],
-                          printingMemo: '',
-                          scratchStatus: [null, null, null],
-                          scratchMemo: '',
-                          foreignStatus: [null, null, null],
-                          foreignMemo: '',
-                          isExpanded: false
-                        },
-                        ...record.measurements
-                      ]
-                    });
-                  }}
-                  className="text-xs font-bold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus size={12} /> 윗 시간대 추가
-                </button>
-                
-                {!isDeletingTopRow ? (
-                  <button 
-                    onClick={() => setIsDeletingTopRow(true)}
-                    className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 size={12} /> 윗 시간대 삭제
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900 rounded-lg p-1 shadow-sm text-[10px]">
-                    <button 
-                      onClick={() => {
-                        if (record.measurements.length > 1) {
-                          setRecord({ ...record, measurements: record.measurements.slice(1) });
-                        }
-                        setIsDeletingTopRow(false);
-                      }}
-                      className="px-2 py-0.5 bg-red-500 text-white rounded font-bold"
-                    >
-                      확인
-                    </button>
-                    <button onClick={() => setIsDeletingTopRow(false)} className="px-2 py-0.5 bg-zinc-100 rounded text-zinc-600 font-bold">
-                      취소
-                    </button>
-                  </div>
-                )}
-              </div>
 
-              <div className="flex gap-4 items-center">
-                <button 
-                  onClick={() => {
-                    const lastTime = record.measurements[record.measurements.length - 1]?.time || "17:00";
-                    const [h, m] = lastTime.split(':').map(Number);
-                    let nextH = (h + 1) % 24;
-                    if (nextH === 13) nextH = 14;
-                    const nextTime = `${nextH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                    setRecord({
-                      ...record,
-                      measurements: [
-                        ...record.measurements,
-                        { 
-                          id: Math.random().toString(36).substr(2, 9), 
-                          time: nextTime, 
-                          vials: [null, null, null], 
-                          vialMemo: '',
-                          capStatus: [null, null, null],
-                          capMemo: '',
-                          stickerStatus: [null, null, null],
-                          stickerMemo: '',
-                          printingStatus: [null, null, null],
-                          printingMemo: '',
-                          scratchStatus: [null, null, null],
-                          scratchMemo: '',
-                          foreignStatus: [null, null, null],
-                          foreignMemo: '',
-                          isExpanded: false
-                        }
-                      ]
-                    });
-                  }}
-                  className="text-xs font-bold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
-                >
-                  <Plus size={12} /> 아랫 시간대 추가
-                </button>
-                
-                {!isDeletingBottomRow ? (
-                  <button 
-                    onClick={() => setIsDeletingBottomRow(true)}
-                    className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 size={12} /> 아랫 시간대 삭제
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900 rounded-lg p-1 shadow-sm text-[10px]">
-                    <button 
-                      onClick={() => {
-                        if (record.measurements.length > 1) {
-                          setRecord({ ...record, measurements: record.measurements.slice(0, -1) });
-                        }
-                        setIsDeletingBottomRow(false);
-                      }}
-                      className="px-2 py-0.5 bg-red-500 text-white rounded font-bold"
-                    >
-                      확인
-                    </button>
-                    <button onClick={() => setIsDeletingBottomRow(false)} className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-700 rounded text-zinc-600 dark:text-zinc-300 font-bold">
-                      취소
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
           </>
         )}
       </div>
