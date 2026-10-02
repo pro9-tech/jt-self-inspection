@@ -2693,6 +2693,7 @@ function AppContent() {
           .insert(weightRows);
         if (weightError) {
           console.error("Supabase Weight Measurement insert error:", weightError);
+          throw new Error(`Weight Measurement 저장 실패: ${weightError.message}`);
         }
       }
 
@@ -2702,11 +2703,13 @@ function AppContent() {
           .insert(otherRows);
         if (otherError) {
           console.error("Supabase Other Measurements insert error:", otherError);
+          throw new Error(`Other Measurements 저장 실패: ${otherError.message}`);
         }
       }
       
     } catch (error) {
       console.error("Supabase sync network error:", error);
+      throw error;
     }
   };
 
