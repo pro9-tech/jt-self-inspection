@@ -1590,34 +1590,66 @@ const MeasurementRow = ({
     return failCount < 2 ? "적합" : "부적합";
   };
 
+  // 3개 선택/입력이 온전히 채워진 항목인지 확인하는 헬퍼 함수
+  const isCategoryComplete = (arr: (string | number | null | undefined)[] | undefined): boolean => {
+    if (!arr || arr.length < 3) return false;
+    return arr.slice(0, 3).every(v => v !== null && v !== undefined && String(v).trim() !== "");
+  };
+
   const handleSaveClick = () => {
-    let hasError = false;
+    // 1. 최소 한 항목의 3개 선택 완료 여부 검사
+    let hasCompletedCategory = false;
     if (mainMode === '충진' && subMode === '충진1') {
-       if (getWeightResultLocal(measurement.vials, standardWeight, underweightTolerance, overweightTolerance) === '부적합' && !measurement.vialMemo) hasError = true;
-       if (getStatusResultLocal(measurement.capStatus) === '부적합' && !measurement.capMemo) hasError = true;
-    }
-    else if (mainMode === '충진' && subMode === '충진2') {
-       if (getStatusResultLocal(measurement.stickerStatus) === '부적합' && !measurement.stickerMemo) hasError = true;
-       if (getStatusResultLocal(measurement.printingStatus) === '부적합' && !measurement.printingMemo) hasError = true;
-    }
-    else if (mainMode === '포장') {
-       if (getStatusResultLocal(measurement.printingStatus) === '부적합' && !measurement.printingMemo) hasError = true;
-       if (getStatusResultLocal(measurement.capStatus) === '부적합' && !measurement.capMemo) hasError = true;
-       if (getStatusResultLocal(measurement.stickerStatus) === '부적합' && !measurement.stickerMemo) hasError = true;
-       if (getStatusResultLocal(measurement.scratchStatus) === '부적합' && !measurement.scratchMemo) hasError = true;
-       if (getStatusResultLocal(measurement.foreignStatus) === '부적합' && !measurement.foreignMemo) hasError = true;
+      hasCompletedCategory = isCategoryComplete(measurement.vials) || isCategoryComplete(measurement.capStatus);
+    } else if (mainMode === '충진' && subMode === '충진2') {
+      hasCompletedCategory = isCategoryComplete(measurement.stickerStatus) || isCategoryComplete(measurement.printingStatus);
+    } else if (mainMode === '포장') {
+      hasCompletedCategory = 
+        isCategoryComplete(measurement.printingStatus) ||
+        isCategoryComplete(measurement.capStatus) ||
+        isCategoryComplete(measurement.stickerStatus) ||
+        isCategoryComplete(measurement.scratchStatus) ||
+        isCategoryComplete(measurement.foreignStatus);
     }
 
-    if (hasError) {
+    // 최소 한 항목의 3개를 채우지 않고 저장 시 -> 저장 거부, 메모장은 펼치지 않고 해당 줄의 모든 선 빨간색 표시
+    if (!hasCompletedCategory) {
+      setShowError(true);
+      return;
+    }
+
+    // 2. 부적합인데 메모 미작성 여부 검사
+    let hasMemoError = false;
+    if (mainMode === '충진' && subMode === '충진1') {
+       if (getWeightResultLocal(measurement.vials, standardWeight, underweightTolerance, overweightTolerance) === '부적합' && !measurement.vialMemo?.trim()) hasMemoError = true;
+       if (getStatusResultLocal(measurement.capStatus) === '부적합' && !measurement.capMemo?.trim()) hasMemoError = true;
+    }
+    else if (mainMode === '충진' && subMode === '충진2') {
+       if (getStatusResultLocal(measurement.stickerStatus) === '부적합' && !measurement.stickerMemo?.trim()) hasMemoError = true;
+       if (getStatusResultLocal(measurement.printingStatus) === '부적합' && !measurement.printingMemo?.trim()) hasMemoError = true;
+    }
+    else if (mainMode === '포장') {
+       if (getStatusResultLocal(measurement.printingStatus) === '부적합' && !measurement.printingMemo?.trim()) hasMemoError = true;
+       if (getStatusResultLocal(measurement.capStatus) === '부적합' && !measurement.capMemo?.trim()) hasMemoError = true;
+       if (getStatusResultLocal(measurement.stickerStatus) === '부적합' && !measurement.stickerMemo?.trim()) hasMemoError = true;
+       if (getStatusResultLocal(measurement.scratchStatus) === '부적합' && !measurement.scratchMemo?.trim()) hasMemoError = true;
+       if (getStatusResultLocal(measurement.foreignStatus) === '부적합' && !measurement.foreignMemo?.trim()) hasMemoError = true;
+    }
+
+    // 부적합인데 메모 누락인 경우 -> 저장 거부, 메모장 펼쳐지고 메모장 줄의 모든 선 및 중간 세로선까지 빨간색 표시
+    if (hasMemoError) {
       setShowError(true);
       onUpdate({ ...measurement, isExpanded: true });
-    } else {
-      setShowError(false);
-      const nowStr = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
-      onUpdate({ ...measurement, time: nowStr, isSaved: true, isExpanded: false });
-      if (onSaveRow) onSaveRow();
+      return;
     }
+
+    // 모든 조건 충족 시 정상 저장
+    setShowError(false);
+    const nowStr = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+    onUpdate({ ...measurement, time: nowStr, isSaved: true, isExpanded: false });
+    if (onSaveRow) onSaveRow();
   };
+
   const average = useMemo(() => {
     const validVials = measurement.vials.filter((v): v is number => v !== null);
     if (validVials.length === 0) return null;
@@ -1650,8 +1682,14 @@ const MeasurementRow = ({
 
   return (
     <>
-      <tr className={cn("border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group", showError && "border-2 border-red-500 shadow-[inset_0_0_0_2px_rgba(239,68,68,1)]")}>
-        <td className="p-3 text-center w-20 min-w-[80px]">
+      <tr className={cn(
+        "border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group", 
+        showError && "border-2 border-red-500 shadow-[inset_0_0_0_2px_rgba(239,68,68,1)]"
+      )}>
+        <td className={cn(
+          "p-3 text-center w-20 min-w-[80px]",
+          showError && "border-l-2 border-t-2 border-b-2 border-red-500"
+        )}>
           {measurement.isSaved ? (
             <button 
               onClick={toggleExpand}
@@ -1686,7 +1724,11 @@ const MeasurementRow = ({
         {mainMode === '충진' && subMode === '충진1' && (
           <>
             {[0, 1, 2].map((i) => (
-              <td key={`w-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`w-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300 dark:border-l-zinc-800"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <NumberInputWithButtons
                   value={measurement.vials[i]}
                   onChange={(val) => handleVialChange(i, val)}
@@ -1695,10 +1737,14 @@ const MeasurementRow = ({
                   inputClassName={getStatusColor(measurement.vials[i])}
                 />
               </td>
-            ))
-            }
+            ))}
             {[0, 1, 2].map((i) => (
-              <td key={`c-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
+              <td key={`c-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300 dark:border-l-zinc-800"), 
+                i === 2 && (showError ? "border-r-2 border-red-500" : "border-r-2 border-zinc-300 dark:border-r-zinc-800"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <StatusToggle 
                   value={measurement.capStatus[i]} 
                   onChange={(val) => handleStatusChange('capStatus', i, val)} 
@@ -1711,7 +1757,11 @@ const MeasurementRow = ({
         {mainMode === '충진' && subMode === '충진2' && (
           <>
             {[0, 1, 2].map((i) => (
-              <td key={`s-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300")}>
+              <td key={`s-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <StatusToggle 
                   value={measurement.stickerStatus[i]} 
                   onChange={(val) => handleStatusChange('stickerStatus', i, val)} 
@@ -1719,7 +1769,12 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`p-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
+              <td key={`p-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300 dark:border-l-zinc-800"), 
+                i === 2 && (showError ? "border-r-2 border-red-500" : "border-r-2 border-zinc-300 dark:border-r-zinc-800"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <StatusToggle 
                   value={measurement.printingStatus[i]} 
                   onChange={(val) => handleStatusChange('printingStatus', i, val)} 
@@ -1732,7 +1787,11 @@ const MeasurementRow = ({
         {mainMode === '포장' && (
           <>
             {[0, 1, 2].map((i) => (
-              <td key={`p-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`p-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300 dark:border-l-zinc-800"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <StatusToggle 
                   value={measurement.printingStatus[i]} 
                   onChange={(val) => handleStatusChange('printingStatus', i, val)} 
@@ -1740,7 +1799,11 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`c-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`c-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300 dark:border-l-zinc-800"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <StatusToggle 
                   value={measurement.capStatus[i]} 
                   onChange={(val) => handleStatusChange('capStatus', i, val)} 
@@ -1748,7 +1811,11 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`s-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`s-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300 dark:border-l-zinc-800"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <StatusToggle 
                   value={measurement.stickerStatus[i]} 
                   onChange={(val) => handleStatusChange('stickerStatus', i, val)} 
@@ -1756,7 +1823,11 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`sc-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800")}>
+              <td key={`sc-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300 dark:border-l-zinc-800"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <StatusToggle 
                   value={measurement.scratchStatus[i]} 
                   onChange={(val) => handleStatusChange('scratchStatus', i, val)} 
@@ -1764,7 +1835,12 @@ const MeasurementRow = ({
               </td>
             ))}
             {[0, 1, 2].map((i) => (
-              <td key={`f-${i}`} className={cn("p-2 w-[125px] min-w-[125px]", i === 0 && "border-l-2 border-zinc-300 dark:border-l-zinc-800", i === 2 && "border-r-2 border-zinc-300 dark:border-r-zinc-800")}>
+              <td key={`f-${i}`} className={cn(
+                "p-2 w-[125px] min-w-[125px]", 
+                i === 0 && (showError ? "border-l-2 border-red-500" : "border-l-2 border-zinc-300 dark:border-l-zinc-800"), 
+                i === 2 && (showError ? "border-r-2 border-red-500" : "border-r-2 border-zinc-300 dark:border-r-zinc-800"),
+                showError && "border-t-2 border-b-2 border-red-500"
+              )}>
                 <StatusToggle 
                   value={measurement.foreignStatus[i]} 
                   onChange={(val) => handleStatusChange('foreignStatus', i, val)} 
@@ -1782,15 +1858,24 @@ const MeasurementRow = ({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-zinc-50/50 border-b border-zinc-200"
+            className={cn(
+              "bg-zinc-50/50",
+              showError ? "border-b-2 border-red-500 shadow-[inset_0_0_0_2px_rgba(239,68,68,1)]" : "border-b border-zinc-200"
+            )}
           >
-            <td className="p-2 text-center bg-zinc-100/50">
+            <td className={cn(
+              "p-2 text-center bg-zinc-100/50",
+              showError && "border-l-2 border-b-2 border-t-2 border-red-500"
+            )}>
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">메모</span>
             </td>
             
             {mainMode === '충진' && subMode === '충진1' && (
               <>
-                <td colSpan={3} className="p-2 border-l-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.vialMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, vialMemo: e.target.value })}
@@ -1798,7 +1883,10 @@ const MeasurementRow = ({
                     placeholder="중량 메모..."
                   />
                 </td>
-                <td colSpan={3} className="p-2 border-l-2 border-r-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-r-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-r-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.capMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, capMemo: e.target.value })}
@@ -1811,7 +1899,10 @@ const MeasurementRow = ({
 
             {mainMode === '충진' && subMode === '충진2' && (
               <>
-                <td colSpan={3} className="p-2 border-l-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.stickerMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, stickerMemo: e.target.value })}
@@ -1819,7 +1910,10 @@ const MeasurementRow = ({
                     placeholder="스티커 메모..."
                   />
                 </td>
-                <td colSpan={3} className="p-2 border-l-2 border-r-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-r-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-r-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.printingMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, printingMemo: e.target.value })}
@@ -1832,7 +1926,10 @@ const MeasurementRow = ({
 
             {mainMode === '포장' && (
               <>
-                <td colSpan={3} className="p-2 border-l-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.printingMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, printingMemo: e.target.value })}
@@ -1840,7 +1937,10 @@ const MeasurementRow = ({
                     placeholder="날인 메모..."
                   />
                 </td>
-                <td colSpan={3} className="p-2 border-l-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.capMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, capMemo: e.target.value })}
@@ -1848,7 +1948,10 @@ const MeasurementRow = ({
                     placeholder="캡 메모..."
                   />
                 </td>
-                <td colSpan={3} className="p-2 border-l-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.stickerMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, stickerMemo: e.target.value })}
@@ -1856,7 +1959,10 @@ const MeasurementRow = ({
                     placeholder="스티커 메모..."
                   />
                 </td>
-                <td colSpan={3} className="p-2 border-l-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.scratchMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, scratchMemo: e.target.value })}
@@ -1864,7 +1970,10 @@ const MeasurementRow = ({
                     placeholder="스크래치 메모..."
                   />
                 </td>
-                <td colSpan={3} className="p-2 border-l-2 border-r-2 border-zinc-300">
+                <td colSpan={3} className={cn(
+                  "p-2",
+                  showError ? "border-l-2 border-r-2 border-t-2 border-b-2 border-red-500" : "border-l-2 border-r-2 border-zinc-300"
+                )}>
                   <textarea
                     value={measurement.foreignMemo || ''}
                     onChange={(e) => onUpdate({ ...measurement, foreignMemo: e.target.value })}
