@@ -237,7 +237,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
 const DEFAULT_MEASUREMENTS: Measurement[] = [{
   id: Math.random().toString(36).substr(2, 9),
-  time: '',
+  time: '09:00',
   vials: [null, null, null],
   vialMemo: '',
   capStatus: [null, null, null],
@@ -1549,6 +1549,8 @@ interface MeasurementRowProps {
   overweightTolerance: number;
   onUpdate: (updated: Measurement) => void;
   onSaveRow?: () => void;
+  isFirstRow?: boolean;
+  onTimeChange?: (newTime: string) => void;
 }
 
 const MeasurementRow = ({ 
@@ -1559,7 +1561,9 @@ const MeasurementRow = ({
   underweightTolerance,
   overweightTolerance,
   onUpdate,
-  onSaveRow
+  onSaveRow,
+  isFirstRow = false,
+  onTimeChange
 }: MeasurementRowProps) => {
   const [showError, setShowError] = useState(false);
 
@@ -1654,10 +1658,9 @@ const MeasurementRow = ({
       return;
     }
 
-    // 모든 조건 충족 시 정상 저장
+    // 모든 조건 충족 시 정상 저장 (체이스 요청: 실시간 시계 대신 지정된 시간 유지)
     setShowError(false);
-    const nowStr = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
-    onUpdate({ ...measurement, time: nowStr, isSaved: true, isExpanded: false });
+    onUpdate({ ...measurement, time: measurement.time || '09:00', isSaved: true, isExpanded: false });
     if (onSaveRow) onSaveRow();
   };
 
@@ -1698,15 +1701,17 @@ const MeasurementRow = ({
         showError && "border-2 border-red-500 shadow-[inset_0_0_0_2px_rgba(239,68,68,1)]"
       )}>
         <td className={cn(
-          "p-3 text-center w-20 min-w-[80px]",
+          "p-2 text-center w-20 min-w-[85px]",
           showError && "border-l-2 border-t-2 border-b-2 border-red-500"
         )}>
           {measurement.isSaved ? (
             <button 
               onClick={toggleExpand}
-              className="flex flex-col items-center justify-center w-full group"
+              className="flex flex-col items-center justify-center w-full group cursor-pointer"
             >
-              <span className="font-mono text-[14px] font-bold text-zinc-700 dark:text-zinc-300">{measurement.time}</span>
+              <span className="font-mono text-[13px] font-bold text-zinc-700 dark:text-zinc-300">
+                {measurement.time || "09:00"}
+              </span>
               <div className={cn(
                 "mt-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-all",
                 measurement.isExpanded && "bg-zinc-800 dark:bg-zinc-700 text-white dark:text-zinc-100 group-hover:bg-zinc-700 dark:group-hover:bg-zinc-600"
@@ -1715,16 +1720,31 @@ const MeasurementRow = ({
               </div>
             </button>
           ) : (
-             <div className="flex flex-col items-center gap-2 w-full">
+             <div className="flex flex-col items-center gap-1.5 w-full">
+               {isFirstRow ? (
+                 <select
+                   value={measurement.time || "09:00"}
+                   onChange={(e) => onTimeChange?.(e.target.value)}
+                   className="font-mono text-[12px] font-bold text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded px-1 py-0.5 text-center outline-none cursor-pointer focus:ring-1 focus:ring-zinc-400 w-full"
+                 >
+                   {['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map(t => (
+                     <option key={t} value={t}>{t}</option>
+                   ))}
+                 </select>
+               ) : (
+                 <span className="font-mono text-[13px] font-bold text-zinc-700 dark:text-zinc-300">
+                   {measurement.time || "09:00"}
+                 </span>
+               )}
                <button 
                  onClick={handleSaveClick}
-                 className="w-full bg-zinc-800 dark:bg-zinc-700 hover:opacity-90 text-white font-bold py-1.5 px-2 rounded-lg text-[11px] transition-all shadow-sm"
+                 className="w-full bg-zinc-800 dark:bg-zinc-700 hover:opacity-90 text-white font-bold py-1.5 px-2 rounded-lg text-[11px] transition-all shadow-sm cursor-pointer"
                >
                  저장
                </button>
                <button 
                  onClick={toggleExpand}
-                 className="p-1 rounded-md text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all"
+                 className="p-0.5 rounded-md text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all cursor-pointer"
                >
                  {measurement.isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                </button>
@@ -2082,6 +2102,53 @@ function AppContent() {
     createdAt: Date.now(),
     uid: '',
   });
+
+  // 체이스 요청: 일괄정상 활성화 상태 토글
+  const [isBatchNormal, setIsBatchNormal] = useState(false);
+
+  // 체이스 요청: 첫 번째 행 시간 변경 시 후속 행들 1시간 단위 자동 연동
+  const handleFirstRowTimeChange = (newTime: string) => {
+    const [startH, startM] = newTime.split(':').map(Number);
+    const updatedMeasurements = record.measurements.map((m, idx) => {
+      if (idx === 0) return { ...m, time: newTime };
+      const nextH = (startH + idx) % 24;
+      const calcTime = `${nextH.toString().padStart(2, '0')}:${(startM || 0).toString().padStart(2, '0')}`;
+      return { ...m, time: calcTime };
+    });
+    setRecord(prev => ({ ...prev, measurements: updatedMeasurements }));
+  };
+
+  // 체이스 요청: 일괄정상 / 일괄정상해제 토글 동작
+  const handleToggleBatchNormal = () => {
+    if (!isBatchNormal) {
+      // 1. 일괄정상 적용: 모든 행에 정상 데이터 채움
+      const std = record.standardWeight ?? 0;
+      const updated = record.measurements.map(m => ({
+        ...m,
+        vials: [std, std, std],
+        capStatus: ['정상', '정상', '정상'],
+        stickerStatus: ['정상', '정상', '정상'],
+        printingStatus: ['정상', '정상', '정상'],
+        scratchStatus: ['정상', '정상', '정상'],
+        foreignStatus: ['정상', '정상', '정상'],
+      }));
+      setRecord(prev => ({ ...prev, measurements: updated }));
+      setIsBatchNormal(true);
+    } else {
+      // 2. 일괄정상해제: 모든 일괄 정상된 칸이 다시 중량칸은 '0.0'(null), 나머지 칸은 '선택'(null)으로 복귀
+      const updated = record.measurements.map(m => ({
+        ...m,
+        vials: [null, null, null],
+        capStatus: [null, null, null],
+        stickerStatus: [null, null, null],
+        printingStatus: [null, null, null],
+        scratchStatus: [null, null, null],
+        foreignStatus: [null, null, null],
+      }));
+      setRecord(prev => ({ ...prev, measurements: updated }));
+      setIsBatchNormal(false);
+    }
+  };
 
   const [settings, setSettings] = useState<AppSettings>({
     items: [],
@@ -2797,6 +2864,7 @@ function AppContent() {
   };
 
   const resetForm = () => {
+    setIsBatchNormal(false);
     setValidationErrors({});
     setRecord({
       id: Math.random().toString(36).substr(2, 9),
@@ -3421,6 +3489,17 @@ function AppContent() {
             <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 select-none bg-zinc-50/50 dark:bg-zinc-900/50">
               <div className="flex items-center gap-3">
                 <h2 className="text-xs font-mono uppercase tracking-widest text-zinc-400">계측 테이블 기록 ({record.mainMode === '포장' ? '포장' : record.subMode})</h2>
+                <button
+                  onClick={handleToggleBatchNormal}
+                  className={cn(
+                    "px-2.5 py-1 rounded text-[11px] font-bold transition-all shadow-sm cursor-pointer",
+                    isBatchNormal 
+                      ? "bg-red-600 hover:bg-red-700 text-white" 
+                      : "bg-zinc-800 text-white dark:bg-zinc-700 hover:bg-zinc-700"
+                  )}
+                >
+                  {isBatchNormal ? "일괄정상해제" : "일괄정상"}
+                </button>
               </div>
               <button 
                 onClick={() => setIsTableCardCollapsed(!isTableCardCollapsed)}
@@ -3551,6 +3630,8 @@ function AppContent() {
                       standardWeight={record.standardWeight || 0}
                       underweightTolerance={record.underweightTolerance || 0}
                       overweightTolerance={record.overweightTolerance || 0}
+                      isFirstRow={idx === 0}
+                      onTimeChange={handleFirstRowTimeChange}
                       onUpdate={(updated) => {
                         const newMeasurements = [...record.measurements];
                         newMeasurements[idx] = updated;
@@ -3558,24 +3639,31 @@ function AppContent() {
                       }}
                       onSaveRow={() => {
                         if (idx === record.measurements.length - 1) {
+                          const currentLen = record.measurements.length;
+                          const firstTime = record.measurements[0]?.time || "09:00";
+                          const [startH, startM] = firstTime.split(':').map(Number);
+                          const nextH = (startH + currentLen) % 24;
+                          const nextTime = `${nextH.toString().padStart(2, '0')}:${(startM || 0).toString().padStart(2, '0')}`;
+                          const std = record.standardWeight ?? 0;
+
                           setRecord(prev => ({
                             ...prev,
                             measurements: [
                               ...prev.measurements,
                               { 
                                 id: Math.random().toString(36).substr(2, 9), 
-                                time: '', 
-                                vials: [null, null, null], 
+                                time: nextTime, 
+                                vials: isBatchNormal ? [std, std, std] : [null, null, null], 
                                 vialMemo: '',
-                                capStatus: [null, null, null],
+                                capStatus: isBatchNormal ? ['정상', '정상', '정상'] : [null, null, null],
                                 capMemo: '',
-                                stickerStatus: [null, null, null],
+                                stickerStatus: isBatchNormal ? ['정상', '정상', '정상'] : [null, null, null],
                                 stickerMemo: '',
-                                printingStatus: [null, null, null],
+                                printingStatus: isBatchNormal ? ['정상', '정상', '정상'] : [null, null, null],
                                 printingMemo: '',
-                                scratchStatus: [null, null, null],
+                                scratchStatus: isBatchNormal ? ['정상', '정상', '정상'] : [null, null, null],
                                 scratchMemo: '',
-                                foreignStatus: [null, null, null],
+                                foreignStatus: isBatchNormal ? ['정상', '정상', '정상'] : [null, null, null],
                                 foreignMemo: '',
                                 isExpanded: false,
                                 isSaved: false
